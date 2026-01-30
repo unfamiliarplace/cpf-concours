@@ -1,3 +1,11 @@
+*DS_STORE*
+
+src/input/*
+!src/input/readme.md
+
+src/output/*
+!src/output/readme.md
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

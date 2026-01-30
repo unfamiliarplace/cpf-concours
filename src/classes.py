@@ -1,14 +1,22 @@
 from __future__ import annotations
 
-class Contest:
+class Concours:
+    name: str
     periods: set[Period]
     schools: set[School]
     volunteers: set[Volunteer]
 
-    def __init__(self: Contest):
+    def __init__(self: Concours, name: str):
+        self.name = name
         self.periods = set()
         self.schools = set()
         self.volunteers = set()
+
+    def __repr__(self: Concours) -> str:
+        return f'Contest: {self.name}'
+    
+    def __hash__(self: Concours) -> int:
+        return hash(('Concours', self.name))
 
 class Category:
     name: str
@@ -22,7 +30,7 @@ class Category:
         return f'Cat: {self.name}'
 
     def __hash__(self: Category) -> int:
-        return hash('Cat', self.name)
+        return hash(('Cat', self.name))
 
 class School:
     name: str
@@ -38,7 +46,7 @@ class School:
         return f'School: {self.name}'
 
     def __hash__(self: School) -> int:
-        return hash('School', self.name)
+        return hash(('School', self.name))
 
 class Person:
     name: str
@@ -51,7 +59,7 @@ class Person:
         return f'Person: {self.name}'
 
     def __hash__(self: Person) -> int:
-        return hash('Person', self.name)
+        return hash(('Person', self.name))
 
 class Judge(Person):
     pass
@@ -62,10 +70,16 @@ class Volunteer(Person):
 class Contestant(Person):
     category: Category
 
-    def __init__(self, name: str, school: School, category: Category):
+    def __init__(self: Contestant, name: str, school: School, category: Category):
         super().__init__(name, school)
         self.category = category
         category.contestants.add(self)
+
+    def __repr__(self: Contestant) -> str:
+        return f'Contestant: {self.name}'
+
+    def __hash__(self: Contestant) -> int:
+        return hash(('Contestant', self.name))
 
 class Period:
     name: str
@@ -79,7 +93,7 @@ class Period:
         return f'Period: {self.name}'
 
     def __hash__(self: Period) -> int:
-        return hash('Period', self.name)
+        return hash(('Period', self.name))
 
 class Room:
     name: str
@@ -89,6 +103,9 @@ class Room:
 
     def __init__(self: Room, name: str):
         self.name = name
+        self.reset()
+
+    def reset(self: Room):
         self.judges = set()
         self.volunteers = set()
         self.categories = set()
@@ -97,4 +114,4 @@ class Room:
         return f'Room: {self.name}'
 
     def __hash__(self: Room) -> int:
-        return hash('Room', self.name)
+        return hash(('Room', self.name))
