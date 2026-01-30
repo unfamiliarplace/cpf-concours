@@ -10,9 +10,22 @@ class ConcoursParser:
         wb = openpyxl.load_workbook(path)
 
         ConcoursParser.parse_rooms(c, wb)
+        ConcoursParser.parse_volunteers(c, wb)
         ConcoursParser.parse_participants(c, wb)
 
         return c
+    
+    @staticmethod
+    def parse_volunteers(c: Concours, wb: openpyxl.Workbook):
+        sheet = wb['volunteers']
+
+        # TODO For now we'll ignore everything but name
+
+        rows = [r for r in sheet.rows][1:]
+        for row in rows:
+            last, first = (c.value.strip() for c in row[2:4])
+            vol = Volunteer(f'{first} {last}')
+            c.volunteers.add(vol)
     
     @staticmethod
     def parse_rooms(c: Concours, wb: openpyxl.Workbook):
@@ -39,10 +52,8 @@ class ConcoursParser:
         sheet = wb['participants']
         rows = [r for r in sheet.rows]
 
+        # Use a list to preserve index for mapping contestants
         categories = []
-        schools = {}
-        contestants = {}
-        judges = {}
 
         # First iteration: categories
         for (offset, prefix) in enumerate('TI'):
@@ -54,10 +65,25 @@ class ConcoursParser:
                 age, french = cat_id.split()
                 cat = Category(prefix, age, french, dur)
                 categories.append(cat)
+                c.categories.add(cat)
         
         # Second iteration: schools, judges, participants
+        for row in rows[5:]:
+            cells = [c.value for c in row]
 
+            if not cells[0]:
+                continue
 
+            school = School(cells[0].strip())
+            c.schools.add(school)
 
-
-       
+            if cells[1]:
+                for j in cells[1].split(','):
+                    school.judges.add(Judge(j, school))
+            
+            for (i, contestant_id) in enumerate(cells[12:19]):
+                if contestant_id:
+                    cat = categories[i]
+                    contestant = Contestant(contestant_id, school, cat)
+                    school.contestants.add(contestant)
+                    cat.contestants.add(contestant)

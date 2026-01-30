@@ -6,6 +6,7 @@ class Concours:
     rooms: set[Room]
     schools: set[School]
     volunteers: set[Volunteer]
+    categories: set[Category]
 
     def __init__(self: Concours, name: str):
         self.name = name
@@ -13,6 +14,7 @@ class Concours:
         self.rooms = set()
         self.schools = set()
         self.volunteers = set()
+        self.categories = set()
 
     def __repr__(self: Concours) -> str:
         return f'Contest: {self.name}'
@@ -59,10 +61,9 @@ class School:
 
 class Person:
     name: str
-    school: School
 
-    def __init__(self: Person, name: str, school: str):
-        self.name, self.school = name, school
+    def __init__(self: Person, name: str):
+        self.name = name
 
     def __repr__(self: Person) -> str:
         return f'Person: {self.name}'
@@ -70,25 +71,31 @@ class Person:
     def __hash__(self: Person) -> int:
         return hash(('Person', self.name))
 
-class Judge(Person):
-    pass
-
 class Volunteer(Person):
     pass
 
-class Contestant(Person):
+class SchoolPerson(Person):
+    school: School
+
+    def __init__(self: SchoolPerson, name: str, school: School):
+        super().__init__(name)
+        self.school = school
+
+class Judge(SchoolPerson):
+    pass
+
+class Contestant(SchoolPerson):
     category: Category
 
     def __init__(self: Contestant, name: str, school: School, category: Category):
         super().__init__(name, school)
         self.category = category
-        category.contestants.add(self)
 
     def __repr__(self: Contestant) -> str:
         return f'Contestant: {self.name}'
 
     def __hash__(self: Contestant) -> int:
-        return hash(('Contestant', self.name))
+        return hash(('Contestant', self.school, self.category, self.name))
 
 class Period:
     name: str
