@@ -3,12 +3,14 @@ from __future__ import annotations
 class Concours:
     name: str
     periods: set[Period]
+    rooms: set[Room]
     schools: set[School]
     volunteers: set[Volunteer]
 
     def __init__(self: Concours, name: str):
         self.name = name
         self.periods = set()
+        self.rooms = set()
         self.schools = set()
         self.volunteers = set()
 
@@ -84,10 +86,15 @@ class Contestant(Person):
 class Period:
     name: str
     rooms: set[Room]
+    schedules: set[RoomSchedule]
 
     def __init__(self: Period, name: str):
         self.name = name
-        self.rooms = []
+        self.rooms = set()
+        self.reset()
+
+    def reset(self: Period):
+        self.schedules = set()
 
     def __repr__(self: Period) -> str:
         return f'Period: {self.name}'
@@ -97,21 +104,38 @@ class Period:
 
 class Room:
     name: str
-    judges: set[Judge]
-    volunteers: set[Volunteer]
-    categories: set[Category]
+    periods: set[Period]
+    schedules: list[RoomSchedule]
 
     def __init__(self: Room, name: str):
         self.name = name
+        self.periods = set()
         self.reset()
 
     def reset(self: Room):
-        self.judges = set()
-        self.volunteers = set()
-        self.categories = set()
+        self.schedules = set()
 
     def __repr__(self: Room) -> str:
         return f'Room: {self.name}'
 
     def __hash__(self: Room) -> int:
         return hash(('Room', self.name))
+
+class RoomSchedule:
+    period: Period
+    room: Room
+    judges: set[Judge]
+    volunteers: set[Volunteer]
+    categories: set[Category]
+
+    def __init__(self: RoomSchedule, period: Period, room: Room):
+        self.period, self.room = period, room
+        self.judges = set()
+        self.volunteers = set()
+        self.categories = set()
+
+    def __repr__(self: Room) -> str:
+        return f'RoomSchedule: {self.period} / {self.room}'
+
+    def __hash__(self: Room) -> int:
+        return hash(('RoomSchedule', self.period, self.room))

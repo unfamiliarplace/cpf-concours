@@ -20,8 +20,14 @@ class ConcoursParser:
 
         rows = [r for r in sheet.rows][1:]
         for row in rows:
-            period_id, room_id = (c.value.strip() for c in row)
-            periods[period_id] = periods.get(period_id, Period(period_id))
-            periods[period_id].add(Room(room_id))
+            period_id, room_id = (str(c.value).strip() for c in row)
+            
+            period = periods.setdefault(period_id, Period(period_id))
+            room = rooms.setdefault(room_id, Room(room_id))
+            
+            period.rooms.add(room)
+            room.periods.add(period)
 
-            # TODO ruh roh... concept of unique room per period or continuity of rooms?
+            c.periods.add(period)
+            c.rooms.add(room)
+       
