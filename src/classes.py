@@ -21,18 +21,25 @@ class Concours:
         return hash(('Concours', self.name))
 
 class Category:
-    name: str
+    format: str
+    age: str
+    french: str
+    duration: int
     contestants: set[Contestant]
 
-    def __init__(self: Category, name: str):
-        self.name = name
+    def __init__(self: Category, format: str, age: str, french: str, duration: int):
+        self.format, self.age, self.french = format, age, french
+        self.duration = duration
         self.contestants = set()
 
+    def name(self: Category) -> str:
+        return f' {self.format} {self.age} {self.french}'
+
     def __repr__(self: Category) -> str:
-        return f'Cat: {self.name}'
+        return f'Cat: {self.name()}'
 
     def __hash__(self: Category) -> int:
-        return hash(('Cat', self.name))
+        return hash(('Cat', self.name()))
 
 class School:
     name: str

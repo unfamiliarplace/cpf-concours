@@ -10,6 +10,9 @@ class ConcoursParser:
         wb = openpyxl.load_workbook(path)
 
         ConcoursParser.parse_rooms(c, wb)
+        ConcoursParser.parse_participants(c, wb)
+
+        return c
     
     @staticmethod
     def parse_rooms(c: Concours, wb: openpyxl.Workbook):
@@ -30,4 +33,31 @@ class ConcoursParser:
 
             c.periods.add(period)
             c.rooms.add(room)
+
+    @staticmethod
+    def parse_participants(c: Concours, wb: openpyxl.Workbook):
+        sheet = wb['participants']
+        rows = [r for r in sheet.rows]
+
+        categories = []
+        schools = {}
+        contestants = {}
+        judges = {}
+
+        # First iteration: categories
+        for (offset, prefix) in enumerate('TI'):
+            start = 12 + (offset * 8)
+            for col in range(start, start + 8):
+                cat_id = rows[1][col].value.replace('\n', ' ')
+                dur = int(rows[3][col].value)
+
+                age, french = cat_id.split()
+                cat = Category(prefix, age, french, dur)
+                categories.append(cat)
+        
+        # Second iteration: schools, judges, participants
+
+
+
+
        
