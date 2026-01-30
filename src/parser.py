@@ -13,5 +13,15 @@ class ConcoursParser:
     
     @staticmethod
     def parse_rooms(c: Concours, wb: openpyxl.Workbook):
-        print(c)
+        sheet = wb['rooms']
 
+        periods = {}
+        rooms = {}
+
+        rows = [r for r in sheet.rows][1:]
+        for row in rows:
+            period_id, room_id = (c.value.strip() for c in row)
+            periods[period_id] = periods.get(period_id, Period(period_id))
+            periods[period_id].add(Room(room_id))
+
+            # TODO ruh roh... concept of unique room per period or continuity of rooms?
