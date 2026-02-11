@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+TRANSITION = 2 # Minutes for duration calculation
+
 class Concours:
     name: str
     periods: set[Period]
@@ -21,21 +23,27 @@ class Concours:
     
     def __hash__(self: Concours) -> int:
         return hash(('Concours', self.name))
+    
+    def projected_duration(self: Concours) -> int:
+        return sum(c.projected_duration() for c in self.categories)
 
 class Category:
     format: str
     age: str
     french: str
-    duration: int
+    base_duration: int
     contestants: set[Contestant]
 
-    def __init__(self: Category, format: str, age: str, french: str, duration: int):
+    def __init__(self: Category, format: str, age: str, french: str, base_duration: int):
         self.format, self.age, self.french = format, age, french
-        self.duration = duration
+        self.base_duration = base_duration
         self.contestants = set()
 
     def name(self: Category) -> str:
         return f' {self.format} {self.age} {self.french}'
+    
+    def projected_duration(self: Category) -> int:
+        return (self.base_duration + TRANSITION) * len(self.contestants)
 
     def __repr__(self: Category) -> str:
         return f'Cat: {self.name()}'
