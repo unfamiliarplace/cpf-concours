@@ -15,8 +15,14 @@ class Concours:
         self.periods = set()
         self.rooms = set()
         self.schools = set()
-        self.volunteers = set()
         self.categories = set()
+
+        # Redundant
+        self.contestants = set()
+        self.judges = set()
+
+        # Not used in scheduling
+        self.volunteers = set()
 
     def __repr__(self: Concours) -> str:
         return f'Contest: {self.name}'
@@ -44,6 +50,9 @@ class Category:
     
     def projected_duration(self: Category) -> int:
         return (self.base_duration + TRANSITION) * len(self.contestants)
+    
+    def eligible_for_judge(self: Category, judge: Judge) -> bool:
+        return all(c.eligible_for_judge(judge) for c in self.contestants)
 
     def __repr__(self: Category) -> str:
         return f'Cat: {self.name()}'
@@ -90,7 +99,12 @@ class SchoolPerson(Person):
         self.school = school
 
 class Judge(SchoolPerson):
-    pass
+    
+    def eligible_for_contestant(self: Judge, contestant: Contestant) -> bool:
+        return self.school != contestant.school
+    
+    def eligible_for_category(self: Judge, cat: Category) -> bool:
+        return all(self.eligible_for_contestant(c) for c in cat.contestants)
 
 class Contestant(SchoolPerson):
     category: Category
@@ -98,6 +112,9 @@ class Contestant(SchoolPerson):
     def __init__(self: Contestant, name: str, school: School, category: Category):
         super().__init__(name, school)
         self.category = category
+    
+    def eligible_for_judge(self: SchoolPerson, judge: Judge) -> bool:
+        return self.school != judge.school
 
     def __repr__(self: Contestant) -> str:
         return f'Contestant: {self.name}'
@@ -135,7 +152,7 @@ class Room:
         self.reset()
 
     def reset(self: Room):
-        self.schedules = set()
+        self.schedules = []
 
     def __repr__(self: Room) -> str:
         return f'Room: {self.name}'
@@ -155,6 +172,9 @@ class RoomSchedule:
         self.judges = set()
         self.volunteers = set()
         self.categories = set()
+    
+    def projected_duration(self: RoomSchedule) -> int:
+        return sum(c.projected_duration() for c in self.categories)
 
     def __repr__(self: Room) -> str:
         return f'RoomSchedule: {self.period} / {self.room}'

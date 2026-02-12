@@ -79,7 +79,9 @@ class ConcoursParser:
 
             if cells[1]:
                 for j in cells[1].split(','):
-                    school.judges.add(Judge(j, school))
+                    judge = Judge(j, school)
+                    school.judges.add(judge)
+                    c.judges.add(judge)
             
             for (i, contestant_id) in enumerate(cells[12:19]):
                 if contestant_id:
@@ -87,3 +89,4 @@ class ConcoursParser:
                     contestant = Contestant(contestant_id, school, cat)
                     school.contestants.add(contestant)
                     cat.contestants.add(contestant)
+                    c.contestants.add(contestant)
