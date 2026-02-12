@@ -1,5 +1,27 @@
 from __future__ import annotations
-from classes import *
+from concours import *
+
+class RoomSchedule:
+    period: Period
+    room: Room
+    judges: set[Judge]
+    volunteers: set[Volunteer]
+    categories: set[Category]
+
+    def __init__(self: RoomSchedule, period: Period, room: Room):
+        self.period, self.room = period, room
+        self.judges = set()
+        self.volunteers = set()
+        self.categories = set()
+    
+    def projected_duration(self: RoomSchedule) -> int:
+        return sum(c.projected_duration() for c in self.categories)
+
+    def __repr__(self: RoomSchedule) -> str:
+        return f'RoomSchedule: {self.period} / {self.room}'
+
+    def __hash__(self: RoomSchedule) -> int:
+        return hash(('RoomSchedule', self.period, self.room))
 
 class ConcoursSchedule:
     c: Concours

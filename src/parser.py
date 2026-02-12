@@ -1,5 +1,5 @@
 from pathlib import Path
-from classes import *
+from concours import *
 import openpyxl
 
 class ConcoursParser:

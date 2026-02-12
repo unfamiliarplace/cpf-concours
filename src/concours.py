@@ -125,15 +125,10 @@ class Contestant(SchoolPerson):
 class Period:
     name: str
     rooms: set[Room]
-    schedules: set[RoomSchedule]
 
     def __init__(self: Period, name: str):
         self.name = name
         self.rooms = set()
-        self.reset()
-
-    def reset(self: Period):
-        self.schedules = set()
 
     def __repr__(self: Period) -> str:
         return f'Period: {self.name}'
@@ -144,40 +139,14 @@ class Period:
 class Room:
     name: str
     periods: set[Period]
-    schedules: list[RoomSchedule]
 
     def __init__(self: Room, name: str):
         self.name = name
         self.periods = set()
-        self.reset()
-
-    def reset(self: Room):
-        self.schedules = []
 
     def __repr__(self: Room) -> str:
         return f'Room: {self.name}'
 
     def __hash__(self: Room) -> int:
         return hash(('Room', self.name))
-
-class RoomSchedule:
-    period: Period
-    room: Room
-    judges: set[Judge]
-    volunteers: set[Volunteer]
-    categories: set[Category]
-
-    def __init__(self: RoomSchedule, period: Period, room: Room):
-        self.period, self.room = period, room
-        self.judges = set()
-        self.volunteers = set()
-        self.categories = set()
     
-    def projected_duration(self: RoomSchedule) -> int:
-        return sum(c.projected_duration() for c in self.categories)
-
-    def __repr__(self: Room) -> str:
-        return f'RoomSchedule: {self.period} / {self.room}'
-
-    def __hash__(self: Room) -> int:
-        return hash(('RoomSchedule', self.period, self.room))
