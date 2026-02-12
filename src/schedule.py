@@ -5,13 +5,11 @@ class RoomSchedule:
     period: Period
     room: Room
     judges: set[Judge]
-    volunteers: set[Volunteer]
     categories: set[Category]
 
     def __init__(self: RoomSchedule, period: Period, room: Room):
         self.period, self.room = period, room
         self.judges = set()
-        self.volunteers = set()
         self.categories = set()
     
     def projected_duration(self: RoomSchedule) -> int:
@@ -46,7 +44,6 @@ class ConcoursSchedule:
 
         # TODO Hm... this will be tough. Probably best to just remake each RS?
         cs.rses = None
-
 
     def reset(self: ConcoursSchedule):
         self.make_initial_room_schedules()
