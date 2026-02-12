@@ -14,6 +14,12 @@ class RoomSchedule:
     
     def projected_duration(self: RoomSchedule) -> int:
         return sum(c.projected_duration() for c in self.categories)
+    
+    def clone(self: RoomSchedule) -> RoomSchedule:
+        rs = RoomSchedule(self.period, self.room)
+        rs.judges = self.judges.copy()
+        rs.categories = self.categories.copy()
+        return rs
 
     def __repr__(self: RoomSchedule) -> str:
         return f'RoomSchedule: {self.period} / {self.room}'
@@ -40,10 +46,29 @@ class ConcoursSchedule:
 
     def clone(self: ConcoursSchedule) -> ConcoursSchedule:
         cs = ConcoursSchedule(self.c)
-        cs.reset()
 
-        # TODO Hm... this will be tough. Probably best to just remake each RS?
-        cs.rses = None
+        # Surely this is bad
+
+        cs.rses = ConcoursScheduler.clone_rses(cs.rses)
+        
+        cs.judges_to_eligible_rses = {}
+        cs.cats_to_eligible_rses = {}
+        cs.rses_to_eligible_judges = {}
+        cs.rses_to_eligible_cats = {}
+
+        for j in self.judges_to_eligible_rses:
+            cs.judges_to_eligible_rses[j] = ConcoursScheduler.clone_rses(self.judges_to_eligible_rses[j])
+
+        for cat in self.cats_to_eligible_rses:
+            cs.cats_to_eligible_rses[cat] = ConcoursScheduler.clone_rses(self.cats_to_eligible_rses[cat])
+
+        for rs in self.rses_to_eligible_judges:
+            cs.rses_to_eligible_judges[rs] = self.rses_to_eligible_judges[rs].copy()
+
+        for rs in self.rses_to_eligible_cats:
+            cs.rses_to_eligible_cats[rs] = self.rses_to_eligible_cats[rs].copy()
+
+        return cs
 
     def reset(self: ConcoursSchedule):
         self.make_initial_room_schedules()
@@ -78,12 +103,13 @@ class ConcoursSchedule:
         # TODO Optimize
         return min(self.rses, key=lambda rs: rs.projected_duration())
 
-class ConcoursScheduler:
-    c: Concours
+class ConcoursScheduler:        
 
-    def __init__(self: ConcoursScheduler, c: Concours):
-        self.c = c
+    @staticmethod
+    def clone_rses(rses: set[RoomSchedule]) -> set[RoomSchedule]:
+        return set(rs.clone() for rs in rses)
 
-    def create_valid_schedule(self: ConcoursScheduler):
+    @staticmethod
+    def create_valid_schedule(c: Concours):
         # TODO
-        return ConcoursSchedule(self.c)
+        return ConcoursSchedule(c)
