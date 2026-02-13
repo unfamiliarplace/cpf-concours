@@ -98,10 +98,38 @@ class ConcoursSchedule:
             for room in period.rooms:
                 rs = RoomSchedule(period, room)
                 self.rses.add(rs)
+    
+    def sort_rses_for_placement_of_category(self: ConcoursSchedule, cat: Category) -> list[RoomSchedule]:
+        """
+        1. Most categories sharing a format with this one
+        2. Most categories sharing an age group with this one
+        3. Most categories sharing a French level with this one
+        4. Fewest categories already
+        5. Shortest duration already
+        """
+        def _terms(rs: RoomSchedule) -> tuple[int]:
+            return (
+                -len([other for other in rs.categories if other.format == cat.format]),
+                -len([other for other in rs.categories if other.age == cat.age]),
+                -len([other for other in rs.categories if other.french == cat.french]),
+                len(rs.categories),
+                rs.projected_duration()
+            )
 
-    def get_next_room_schedule_for_placement(self: ConcoursSchedule) -> RoomSchedule:
-        # TODO Optimize
-        return min(self.rses, key=lambda rs: rs.projected_duration())
+        return sorted(self.rses, key=_terms)
+
+    def sort_rses_for_placement_of_judge(self: ConcoursSchedule, j: Judge) -> list[RoomSchedule]:
+        """
+        1. Fewest judges already
+        2. Fewest judges from the same school
+        """
+        def _terms(rs: RoomSchedule) -> tuple[int]:
+            return (
+                len(rs.judges),
+                len([other for other in rs.judges if other.school == j.school])
+            )
+
+        return sorted(self.rses, key=_terms)
 
 class ConcoursScheduler:        
 
@@ -110,6 +138,15 @@ class ConcoursScheduler:
         return set(rs.clone() for rs in rses)
 
     @staticmethod
-    def create_valid_schedule(c: Concours):
+    def create_valid_schedule(c: Concours) -> ConcoursSchedule:
         # TODO
-        return ConcoursSchedule(c)
+        s = ConcoursSchedule(c)
+        
+        # for cat in c.categories:
+        #     print(cat)
+        #     rses = s.sort_rses_for_placement_of_category(cat)
+        #     print(rses)
+        #     print(rses[0])
+        #     rses[0].categories.add(cat)
+        
+        return s
