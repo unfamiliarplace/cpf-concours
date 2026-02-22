@@ -40,7 +40,8 @@ class RoomSchedule:
         return rs
 
     def __repr__(self: RoomSchedule) -> str:
-        return f'RoomSchedule: {self.period} / {self.room}'
+        # return f'RoomSchedule: {self.period} / {self.room}'
+        return f'RS: {self.period} / {self.room}'
 
     def __hash__(self: RoomSchedule) -> int:
         return hash(('RoomSchedule', self.period, self.room))
@@ -233,7 +234,9 @@ class ConcoursScheduler:
         # TODO Test
         if success:
             for rs in candidate.rses:
-                print(rs, rs.judges, rs.categories)
+                # print(rs, rs.judges, rs.categories)
+                print(f'{str(rs):<22} {rs.projected_duration():<3} {rs.categories}')
+                print('\t', rs.judges)
                 print()
             
             return candidate

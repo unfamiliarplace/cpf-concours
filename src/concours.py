@@ -28,7 +28,7 @@ class Concours:
         self.volunteers = set()
 
     def __repr__(self: Concours) -> str:
-        return f'Contest: {self.name}'
+        return f'Concours: {self.name}'
     
     def __hash__(self: Concours) -> int:
         return hash(('Concours', self.name))
@@ -61,11 +61,23 @@ class Category:
     def eligible_for_judge(self: Category, judge: Judge) -> bool:
         return all(c.eligible_for_judge(judge) for c in self.contestants)
 
+    def shortname(self: Category) -> str:
+        age = 'J' if self.age == '9/10' else 'S'
+        fre = {
+            'Cad.': 'C',
+            'Inten.': 'E',
+            'Imm.': 'M',
+            'Fr.': 'F'
+        }
+
+        return f'{self.format}{age}{fre[self.french]}'
+
     def __repr__(self: Category) -> str:
-        return f'Cat: {self.name()}'
+        # return f'Cat: {self.name()}'
+        return f'{self.shortname()}'
 
     def __hash__(self: Category) -> int:
-        return hash(('Cat', self.name()))
+        return hash(('Cat', self.shortname()))
 
 class School:
     name: str
@@ -90,7 +102,8 @@ class Person:
         self.name = name
 
     def __repr__(self: Person) -> str:
-        return f'Person: {self.name}'
+        # return f'Person: {self.name}'
+        return f'{self.name}'
 
     def __hash__(self: Person) -> int:
         return hash(('Person', self.name))
@@ -113,6 +126,9 @@ class Judge(SchoolPerson):
     def eligible_for_category(self: Judge, cat: Category) -> bool:
         return all(self.eligible_for_contestant(c) for c in cat.contestants)
 
+    def __repr__(self: Judge) -> str:
+        return f'[J] {self.name}'
+
 class Contestant(SchoolPerson):
     category: Category
 
@@ -124,7 +140,8 @@ class Contestant(SchoolPerson):
         return self.school != judge.school
 
     def __repr__(self: Contestant) -> str:
-        return f'Contestant: {self.name}'
+        # return f'Contestant: {self.name}'
+        return f'[C] {self.name}'
 
     def __hash__(self: Contestant) -> int:
         return hash(('Contestant', self.school, self.category, self.name))
@@ -138,7 +155,8 @@ class Period:
         self.rooms = set()
 
     def __repr__(self: Period) -> str:
-        return f'Period: {self.name}'
+        # return f'Period: {self.name}'
+        return f'PER {self.name}'
 
     def __hash__(self: Period) -> int:
         return hash(('Period', self.name))
@@ -152,7 +170,8 @@ class Room:
         self.periods = set()
 
     def __repr__(self: Room) -> str:
-        return f'Room: {self.name}'
+        # return f'Room: {self.name}'
+        return f'RM {self.name}'
 
     def __hash__(self: Room) -> int:
         return hash(('Room', self.name))
