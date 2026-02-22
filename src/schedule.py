@@ -49,8 +49,6 @@ class ConcoursSchedule:
     c: Concours
     rses: set[RoomSchedule]
 
-    target_rs_duration: int
-
     rses_to_eligible_judges: dict[RoomSchedule, Judge]
     rses_to_eligible_cats: dict[RoomSchedule, Category]
 
@@ -78,7 +76,6 @@ class ConcoursSchedule:
     def reset(self: ConcoursSchedule):
         self.make_initial_room_schedules()
         self.make_initial_rs_relationships()
-        self.target_rs_duration = self.c.projected_duration() // len(self.rses)
 
     def make_initial_rs_relationships(self: ConcoursSchedule):
         self.rses_to_eligible_judges = {rs: self.c.judges.copy() for rs in self.rses}
@@ -148,7 +145,7 @@ class ConcoursSchedule:
         
         # Update eligibility based on time
         new_cs.rses_to_eligible_cats[rs] = set(filter(
-            lambda cat: rs.can_accommodate_cat_duration(self.target_rs_duration, cat), self.rses_to_eligible_cats[rs]
+            lambda cat: rs.can_accommodate_cat_duration(self.c.target_rs_duration, cat), self.rses_to_eligible_cats[rs]
         ))
 
         return new_cs
@@ -198,9 +195,6 @@ class ConcoursScheduler:
             # Randomly choose whether to place a cat or a judge
             if cats and (not judges or random.randint(0, 1)):
                 cat, cats = cats[0], cats[1:]
-
-                # For each potential way of adding it,
-                # a new schedule object is created
                 for new_s in s.get_ways_to_add_cat(cat):
                     success, candidate = add_next_item(new_s, cats[:], judges[:])
                     if success: # Only finds one successful candidate

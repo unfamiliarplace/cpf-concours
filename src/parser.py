@@ -13,6 +13,8 @@ class ConcoursParser:
         ConcoursParser.parse_volunteers(c, wb)
         ConcoursParser.parse_participants(c, wb)
 
+        c.set_target_rs_duration()
+
         return c
     
     @staticmethod

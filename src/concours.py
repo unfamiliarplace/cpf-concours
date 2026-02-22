@@ -9,6 +9,7 @@ class Concours:
     schools: set[School]
     volunteers: set[Volunteer]
     categories: set[Category]
+    target_rs_duration: int
 
     def __init__(self: Concours, name: str):
         self.name = name
@@ -16,6 +17,8 @@ class Concours:
         self.rooms = set()
         self.schools = set()
         self.categories = set()
+
+        self.target_rs_duration = 0 # To be filled in by parser
 
         # Redundant
         self.contestants = set()
@@ -32,6 +35,10 @@ class Concours:
     
     def projected_duration(self: Concours) -> int:
         return sum(c.projected_duration() for c in self.categories)
+    
+    def set_target_rs_duration(self: Concours) -> int:
+        n_rses = sum(len(p.rooms) for p in self.periods)
+        self.target_rs_duration = self.projected_duration() // n_rses
 
 class Category:
     format: str
