@@ -233,10 +233,13 @@ class ConcoursScheduler:
             if (not cats) and (not judges):
                 return True, s
             
-            # Randomly place a cat or a judge
+            # Randomly choose whether to place a cat or a judge
             if (cats and not judges) or random.randint(0, 1):
                 cat, cats = cats[0], cats[1:]                
                 try:
+
+                    # For each potential way of adding it,
+                    # a new schedule object is created
                     for new_s in s.get_ways_to_add_cat(cat):
                         success, candidate = add_next_item(new_s, cats[:], judges[:])
                         if success:
@@ -245,6 +248,7 @@ class ConcoursScheduler:
                 except CannotAddCategoryException:
                     return False, None
 
+            # Same logic for judge
             else:
                 j, judges = judges[0], judges[1:]
                 try:
@@ -255,6 +259,9 @@ class ConcoursScheduler:
 
                 except CannotAddJudgeException:
                     return False, None
+                
+            # Somehow failed everywhere
+            return False, None
 
         # TODO Consider ordering categories and judges optimally
         success, candidate = add_next_item(ConcoursSchedule(c), list(c.categories), list(c.judges))
