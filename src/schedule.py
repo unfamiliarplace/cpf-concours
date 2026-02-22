@@ -237,12 +237,12 @@ class ConcoursScheduler:
                 cat = random.choice(cats_to_add)
                 s = s.add_next_cat(cat)
                 cats_to_add.remove(cat)
-            
+        
             if judges_to_add:
                 j = random.choice(judges_to_add)
                 s = s.add_next_judge(j)
                 judges_to_add.remove(j)
-        
+
         for rs in s.rses:
             print(rs)
             print(rs.judges)
