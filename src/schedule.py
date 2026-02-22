@@ -1,5 +1,20 @@
 from __future__ import annotations
 from concours import *
+import random
+
+# The maximum eligible time imbalance: how many multiples of the mean are allowed?
+# e.g. Concours = 180 min; 6 rooms; mean per room = 30; value of 1.25 = max time 37.5 min
+MAX_TIME_IMBALANCE = 1.25
+
+class CannotAddJudgeException(Exception):
+     def __init__(self: CannotAddJudgeException, j: Judge):
+        self.message = f'Cannot add judge {j}'
+        super().__init__(self.message)
+
+class CannotAddCategoryException(Exception):
+     def __init__(self: CannotAddCategoryException, cat: Category):
+        self.message = f'Cannot add category {cat}'
+        super().__init__(self.message)
 
 class RoomSchedule:
     period: Period
@@ -15,6 +30,9 @@ class RoomSchedule:
     def projected_duration(self: RoomSchedule) -> int:
         return sum(c.projected_duration() for c in self.categories)
     
+    def can_accommodate_cat_duration(self: RoomSchedule, target: int, cat: Category) -> bool:
+        return ((self.projected_duration() + cat.projected_duration()) / target) <= (target * MAX_TIME_IMBALANCE)
+    
     def clone(self: RoomSchedule) -> RoomSchedule:
         rs = RoomSchedule(self.period, self.room)
         rs.judges = self.judges.copy()
@@ -26,10 +44,21 @@ class RoomSchedule:
 
     def __hash__(self: RoomSchedule) -> int:
         return hash(('RoomSchedule', self.period, self.room))
+    
+    def __eq__(self: RoomSchedule, other: object) -> bool:
+        if not isinstance(other, RoomSchedule):
+            return False
+        
+        return hash(self) == hash(other)
+    
+    def __ne__(self: RoomSchedule, other: object) -> bool:
+        return not (self == other)
 
 class ConcoursSchedule:
     c: Concours
     rses: set[RoomSchedule]
+
+    target_rs_duration: int
 
     judges_to_eligible_cats: dict[Judge, Category]
     cats_to_eligible_judges: dict[Category, Judge]
@@ -74,6 +103,7 @@ class ConcoursSchedule:
         self.make_initial_room_schedules()
         self.make_initial_rs_relationships()
         self.make_judge_category_relationships()
+        self.target_rs_duration = self.c.projected_duration() // len(self.rses)
 
     def make_judge_category_relationships(self: ConcoursSchedule):
         self.judges_to_eligible_cats = dict()
@@ -116,7 +146,8 @@ class ConcoursSchedule:
                 rs.projected_duration()
             )
 
-        return sorted(self.rses, key=_terms)
+        rses = filter(lambda rs: cat in self.rses_to_eligible_cats[rs], self.rses)
+        return sorted(rses, key=_terms)
 
     def sort_rses_for_placement_of_judge(self: ConcoursSchedule, j: Judge) -> list[RoomSchedule]:
         """
@@ -129,9 +160,64 @@ class ConcoursSchedule:
                 len([other for other in rs.judges if other.school == j.school])
             )
 
-        return sorted(self.rses, key=_terms)
+        rses = filter(lambda rs: j in self.rses_to_eligible_judges[rs], self.rses)
+        return sorted(rses, key=_terms)
+    
+    def match_rs(self: ConcoursSchedule, rs: RoomSchedule) -> RoomSchedule:
+        """
+        Seems very dumb... My reasoning is this:
+        - new CS is created that has clones of all the RSes
+        - functions like add_cat_to_rs that are given an RS need to identify which clone to act on
+        """
+        
+        for other in self.rses:
+            if other == rs:
+                return other
 
-class ConcoursScheduler:        
+    def add_cat_to_rs(self: ConcoursSchedule, cat: Category, rs: RoomSchedule) -> ConcoursSchedule:
+        new_cs = self.clone()
+        new_rs = new_cs.match_rs(rs)
+
+        new_rs.categories.add(cat)
+        new_cs.rses_to_eligible_judges[rs] = set(filter(
+            lambda j: j.eligible_for_category(cat), self.rses_to_eligible_judges[rs]
+        ))
+        
+        # Update eligibility based on time
+        new_cs.rses_to_eligible_cats[rs] = set(filter(
+            lambda cat: rs.can_accommodate_cat_duration(self.target_rs_duration, cat), self.rses_to_eligible_cats[rs]
+        ))
+
+        return new_cs
+
+    def add_judge_to_rs(self: ConcoursSchedule, j: Judge, rs: RoomSchedule) -> ConcoursSchedule:
+        new_cs = self.clone()
+        new_rs = new_cs.match_rs(rs)
+
+        new_rs.judges.add(j)
+        new_cs.rses_to_eligible_cats[rs] = set(filter(
+            lambda cat: cat.eligible_for_judge(j), self.rses_to_eligible_cats[rs]
+        ))
+        
+        return new_cs
+    
+    def add_next_cat(self: ConcoursSchedule, cat: Category) -> ConcoursSchedule:
+        rses = self.sort_rses_for_placement_of_category(cat)
+        if not rses:
+            raise CannotAddCategoryException(cat)
+
+        # TODO try all
+        return self.add_cat_to_rs(cat, rses[0])
+    
+    def add_next_judge(self: ConcoursSchedule, j: Judge) -> ConcoursSchedule:
+        rses = self.sort_rses_for_placement_of_judge(j)
+        if not rses:
+            raise CannotAddJudgeException(j)
+
+        # TODO try all
+        return self.add_judge_to_rs(j, rses[0])
+
+class ConcoursScheduler:
 
     @staticmethod
     def clone_rses(rses: set[RoomSchedule]) -> set[RoomSchedule]:
@@ -139,14 +225,29 @@ class ConcoursScheduler:
 
     @staticmethod
     def create_valid_schedule(c: Concours) -> ConcoursSchedule:
-        # TODO
         s = ConcoursSchedule(c)
+
+        # TODO non-random order?
+        cats_to_add = list(c.categories.copy())
+        judges_to_add = list(c.judges.copy())
+
+        # TODO Experimental... just alternating
+        while cats_to_add or judges_to_add:
+            if cats_to_add:
+                cat = random.choice(cats_to_add)
+                s = s.add_next_cat(cat)
+                cats_to_add.remove(cat)
+            
+            if judges_to_add:
+                j = random.choice(judges_to_add)
+                s = s.add_next_judge(j)
+                judges_to_add.remove(j)
         
-        # for cat in c.categories:
-        #     print(cat)
-        #     rses = s.sort_rses_for_placement_of_category(cat)
-        #     print(rses)
-        #     print(rses[0])
-        #     rses[0].categories.add(cat)
+        for rs in s.rses:
+            print(rs)
+            print(rs.judges)
+            print(rs.categories)
+            print()
         
         return s
+    
