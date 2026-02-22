@@ -11,7 +11,7 @@ PATH_HARDCODED_INPUT_FILE = PATH_INPUT / 'concours.xlsx'
 
 def run():
     c = CP.parse(PATH_HARDCODED_INPUT_FILE)
-    sched = CS.create_valid_schedule(c)    
+    sched = CS.create_valid_schedule(c)
 
 if __name__ == '__main__':
     run()
