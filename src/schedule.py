@@ -8,9 +8,13 @@ import random
 MAX_TIME_IMBALANCE = 1.25
 
 # Maximum cats per room/schedule
-MAX_CATS = 3
+MAX_CATS = 2
+
+MAX_JUDGES = 3
+MIN_JUDGES = 2
 
 # TODO Min cats??
+# TODO Keep judges in same room??
 
 class RoomSchedule:
     period: Period
