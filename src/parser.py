@@ -57,7 +57,7 @@ class ConcoursParser:
 
         # First iteration: categories
         for (offset, prefix) in enumerate('TI'):
-            start = 12 + (offset * 8)
+            start = 11 + (offset * 8)
             for col in range(start, start + 8):
                 cat_id = rows[1][col].value.replace('\n', ' ')
                 dur = int(rows[3][col].value)
@@ -77,13 +77,13 @@ class ConcoursParser:
             school = School(cells[0].strip())
             c.schools.add(school)
 
-            if cells[1]:
-                for j in cells[1].split(','):
+            if cells[10]:
+                for j in cells[10].split(','):
                     judge = Judge(j, school)
                     school.judges.add(judge)
                     c.judges.add(judge)
             
-            for (i, contestant_id) in enumerate(cells[12:19]):
+            for (i, contestant_id) in enumerate(cells[11:18]):
                 if contestant_id:
                     cat = categories[i]
                     contestant = Contestant(contestant_id, school, cat)
