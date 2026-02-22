@@ -7,16 +7,6 @@ import random
 # e.g. Concours = 180 min; 6 rooms; mean per room = 30; value of 1.25 = max time 37.5 min
 MAX_TIME_IMBALANCE = 1.25
 
-class CannotAddJudgeException(Exception):
-     def __init__(self: CannotAddJudgeException, j: Judge):
-        self.message = f'Cannot add judge {j}'
-        super().__init__(self.message)
-
-class CannotAddCategoryException(Exception):
-     def __init__(self: CannotAddCategoryException, cat: Category):
-        self.message = f'Cannot add category {cat}'
-        super().__init__(self.message)
-
 class RoomSchedule:
     period: Period
     room: Room
@@ -205,7 +195,7 @@ class ConcoursSchedule:
     def get_ways_to_add_cat(self: ConcoursSchedule, cat: Category) -> Iterator[ConcoursSchedule]:
         rses = self.sort_rses_for_placement_of_category(cat)
         if not rses:
-            raise CannotAddCategoryException(cat)
+            print(f"Couldn't place {cat}")
 
         for rs in rses:
             yield self.add_cat_to_rs(cat, rs)
@@ -213,7 +203,7 @@ class ConcoursSchedule:
     def get_ways_to_add_judge(self: ConcoursSchedule, j: Judge) -> Iterator[ConcoursSchedule]:
         rses = self.sort_rses_for_placement_of_judge(j)
         if not rses:
-            raise CannotAddJudgeException(j)
+            print(f"Couldn't place {j}")
 
         for rs in rses:
             yield self.add_judge_to_rs(j, rs)
@@ -235,30 +225,22 @@ class ConcoursScheduler:
             
             # Randomly choose whether to place a cat or a judge
             if (cats and not judges) or random.randint(0, 1):
-                cat, cats = cats[0], cats[1:]                
-                try:
+                cat, cats = cats[0], cats[1:]
 
-                    # For each potential way of adding it,
-                    # a new schedule object is created
-                    for new_s in s.get_ways_to_add_cat(cat):
-                        success, candidate = add_next_item(new_s, cats[:], judges[:])
-                        if success:
-                            return True, candidate
-
-                except CannotAddCategoryException:
-                    return False, None
+                # For each potential way of adding it,
+                # a new schedule object is created
+                for new_s in s.get_ways_to_add_cat(cat):
+                    success, candidate = add_next_item(new_s, cats[:], judges[:])
+                    if success: # Only finds one successful candidate
+                        return True, candidate
 
             # Same logic for judge
             else:
                 j, judges = judges[0], judges[1:]
-                try:
-                    for new_s in s.get_ways_to_add_judge(j):
-                        success, candidate = add_next_item(new_s, cats[:], judges[:])
-                        if success:
-                            return True, candidate
-
-                except CannotAddJudgeException:
-                    return False, None
+                for new_s in s.get_ways_to_add_judge(j):
+                    success, candidate = add_next_item(new_s, cats[:], judges[:])
+                    if success:
+                        return True, candidate
                 
             # Somehow failed everywhere
             return False, None
