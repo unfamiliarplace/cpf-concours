@@ -194,6 +194,13 @@ class ConcoursSchedule:
         for rs in rses:
             yield self.add_judge_to_rs(j, rs)
 
+    def pretty_print(self: ConcoursSchedule):
+        for rs in self.rses:
+            # print(rs, rs.judges, rs.categories)
+            print(f'{str(rs):<22} {rs.projected_duration():<3} {rs.categories}')
+            print('\t', rs.judges)
+            print()
+
 class ConcoursScheduler:
 
     @staticmethod
@@ -233,12 +240,7 @@ class ConcoursScheduler:
 
         # TODO Test
         if success:
-            for rs in candidate.rses:
-                # print(rs, rs.judges, rs.categories)
-                print(f'{str(rs):<22} {rs.projected_duration():<3} {rs.categories}')
-                print('\t', rs.judges)
-                print()
-            
+            candidate.pretty_print()            
             return candidate
 
         else:
