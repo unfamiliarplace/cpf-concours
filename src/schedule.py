@@ -208,6 +208,7 @@ class ConcoursSchedule:
         """
 
         # Remove useless RSes
+        # TODO Not so good; instead use these to fix others?
         self.rses = set(filter(lambda rs: rs.categories or rs.judges, self.rses))
 
         for rs in self.rses:
@@ -218,8 +219,8 @@ class ConcoursSchedule:
                 return False
             
             # TODO Similarly
-            if rs.judges and (len(rs.categories) < MIN_CATS):
-                return False
+            # if rs.judges and (len(rs.categories) < MIN_CATS):
+            #     return False
 
         return True
 
@@ -240,6 +241,7 @@ class ConcoursScheduler:
     def create_valid_schedule(c: Concours) -> ConcoursSchedule:
 
         def add_next_item(s: ConcoursSchedule, cats: list[Category], judges: list[Judge]) -> tuple[bool, ConcoursSchedule|None]:
+            # print(len(cats) + len(judges))
             
             # Base case 1: nothing more to place. Done!
             if (not cats) and (not judges):
