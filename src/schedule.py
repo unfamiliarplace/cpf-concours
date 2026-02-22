@@ -61,7 +61,7 @@ class ConcoursSchedule:
 
         # Surely this is bad
 
-        cs.rses = ConcoursScheduler.clone_rses(cs.rses)
+        cs.rses = ConcoursScheduler.clone_rses(self.rses)
         
         cs.rses_to_eligible_judges = {}
         for rs in self.rses_to_eligible_judges:
@@ -76,10 +76,6 @@ class ConcoursSchedule:
     def reset(self: ConcoursSchedule):
         self.make_initial_room_schedules()
         self.make_initial_rs_relationships()
-
-    def make_initial_rs_relationships(self: ConcoursSchedule):
-        self.rses_to_eligible_judges = {rs: self.c.judges.copy() for rs in self.rses}
-        self.rses_to_eligible_cats = {rs: self.c.categories.copy() for rs in self.rses}
     
     def make_initial_room_schedules(self: ConcoursSchedule):        
         self.rses = set()
@@ -88,6 +84,10 @@ class ConcoursSchedule:
             for room in period.rooms:
                 rs = RoomSchedule(period, room)
                 self.rses.add(rs)
+
+    def make_initial_rs_relationships(self: ConcoursSchedule):
+        self.rses_to_eligible_judges = {rs: self.c.judges.copy() for rs in self.rses}
+        self.rses_to_eligible_cats = {rs: self.c.categories.copy() for rs in self.rses}
     
     def sort_rses_for_placement_of_category(self: ConcoursSchedule, cat: Category) -> list[RoomSchedule]:
         """
@@ -140,12 +140,14 @@ class ConcoursSchedule:
 
         new_rs.categories.add(cat)
         new_cs.rses_to_eligible_judges[rs] = set(filter(
-            lambda j: j.eligible_for_category(cat), self.rses_to_eligible_judges[rs]
+            lambda j: j.eligible_for_category(cat),
+            self.rses_to_eligible_judges[rs]
         ))
         
         # Update eligibility based on time
         new_cs.rses_to_eligible_cats[rs] = set(filter(
-            lambda cat: rs.can_accommodate_cat_duration(self.c.target_rs_duration, cat), self.rses_to_eligible_cats[rs]
+            lambda cat: rs.can_accommodate_cat_duration(self.c.target_rs_duration, cat),
+            self.rses_to_eligible_cats[rs]
         ))
 
         return new_cs
@@ -156,7 +158,8 @@ class ConcoursSchedule:
 
         new_rs.judges.add(j)
         new_cs.rses_to_eligible_cats[rs] = set(filter(
-            lambda cat: cat.eligible_for_judge(j), self.rses_to_eligible_cats[rs]
+            lambda cat: cat.eligible_for_judge(j),
+            self.rses_to_eligible_cats[rs]
         ))
         
         return new_cs
