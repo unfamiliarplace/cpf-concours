@@ -51,13 +51,7 @@ class ConcoursSchedule:
 
     target_rs_duration: int
 
-    judges_to_eligible_cats: dict[Judge, Category]
-    cats_to_eligible_judges: dict[Category, Judge]
-
-    judges_to_eligible_rses: dict[Judge, RoomSchedule]
     rses_to_eligible_judges: dict[RoomSchedule, Judge]
-
-    cats_to_eligible_rses: dict[Category, RoomSchedule]
     rses_to_eligible_cats: dict[RoomSchedule, Category]
 
     def __init__(self: ConcoursSchedule, c: Concours):
@@ -71,20 +65,11 @@ class ConcoursSchedule:
 
         cs.rses = ConcoursScheduler.clone_rses(cs.rses)
         
-        cs.judges_to_eligible_rses = {}
-        cs.cats_to_eligible_rses = {}
         cs.rses_to_eligible_judges = {}
-        cs.rses_to_eligible_cats = {}
-
-        for j in self.judges_to_eligible_rses:
-            cs.judges_to_eligible_rses[j] = ConcoursScheduler.clone_rses(self.judges_to_eligible_rses[j])
-
-        for cat in self.cats_to_eligible_rses:
-            cs.cats_to_eligible_rses[cat] = ConcoursScheduler.clone_rses(self.cats_to_eligible_rses[cat])
-
         for rs in self.rses_to_eligible_judges:
             cs.rses_to_eligible_judges[rs] = self.rses_to_eligible_judges[rs].copy()
 
+        cs.rses_to_eligible_cats = {}
         for rs in self.rses_to_eligible_cats:
             cs.rses_to_eligible_cats[rs] = self.rses_to_eligible_cats[rs].copy()
 
@@ -93,23 +78,10 @@ class ConcoursSchedule:
     def reset(self: ConcoursSchedule):
         self.make_initial_room_schedules()
         self.make_initial_rs_relationships()
-        self.make_judge_category_relationships()
         self.target_rs_duration = self.c.projected_duration() // len(self.rses)
 
-    def make_judge_category_relationships(self: ConcoursSchedule):
-        self.judges_to_eligible_cats = dict()
-        for j in self.c.judges:
-            self.judges_to_eligible_cats[j] = set(filter(lambda c: j.eligible_for_category(c), self.c.categories))
-
-        self.cats_to_eligible_judges = dict()
-        for c in self.c.categories:
-            self.cats_to_eligible_judges[c] = set(filter(lambda j: j.eligible_for_category(c), self.c.judges))
-
     def make_initial_rs_relationships(self: ConcoursSchedule):
-        self.judges_to_eligible_rses = {j: self.rses.copy() for j in self.c.judges}
         self.rses_to_eligible_judges = {rs: self.c.judges.copy() for rs in self.rses}
-
-        self.cats_to_eligible_rses = {c: self.rses.copy() for c in self.c.categories}
         self.rses_to_eligible_cats = {rs: self.c.categories.copy() for rs in self.rses}
     
     def make_initial_room_schedules(self: ConcoursSchedule):        
@@ -224,7 +196,7 @@ class ConcoursScheduler:
                 return True, s
             
             # Randomly choose whether to place a cat or a judge
-            if (cats and not judges) or random.randint(0, 1):
+            if cats and (not judges or random.randint(0, 1)):
                 cat, cats = cats[0], cats[1:]
 
                 # For each potential way of adding it,
