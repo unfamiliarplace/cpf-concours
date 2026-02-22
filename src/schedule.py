@@ -9,6 +9,7 @@ MAX_TIME_IMBALANCE = 1.25
 
 # Maximum cats per room/schedule
 MAX_CATS = 2
+MIN_CATS = 1
 
 MAX_JUDGES = 3
 MIN_JUDGES = 2
@@ -176,6 +177,10 @@ class ConcoursSchedule:
             self.rses_to_eligible_cats[rs]
         ))
         
+        # Update eligibility based on # of judges
+        if len(new_rs.judges) >= MAX_JUDGES:
+            new_cs.rses_to_eligible_judges[rs] = set()
+        
         return new_cs
     
     def get_ways_to_add_cat(self: ConcoursSchedule, cat: Category) -> Iterator[ConcoursSchedule]:
@@ -193,6 +198,30 @@ class ConcoursSchedule:
 
         for rs in rses:
             yield self.add_judge_to_rs(j, rs)
+
+    def is_valid(self: ConcoursSchedule) -> bool:
+        """
+        This is the last-ditch effort. It only gets run after all
+        distribution has been made. Thus, it does not short-circuit
+        and is not efficient. TODO It's more of a stand-in for better
+        guardrails during computation. But it might work for now!
+        """
+
+        # Remove useless RSes
+        self.rses = set(filter(lambda rs: rs.categories or rs.judges, self.rses))
+
+        for rs in self.rses:
+
+            # TODO This could perhaps be improved by not rejecting outright
+            # but by moving an eligible judge? Might defeat the purpose...
+            if rs.categories and (len(rs.judges) < MIN_JUDGES):
+                return False
+            
+            # TODO Similarly
+            if rs.judges and (len(rs.categories) < MIN_CATS):
+                return False
+
+        return True
 
     def pretty_print(self: ConcoursSchedule):
         for rs in self.rses:
@@ -214,7 +243,10 @@ class ConcoursScheduler:
             
             # Base case 1: nothing more to place. Done!
             if (not cats) and (not judges):
-                return True, s
+                if s.is_valid():
+                    return True, s
+                else:
+                    return False, None
             
             # Randomly choose whether to place a cat or a judge
             if cats and (not judges or random.randint(0, 1)):
