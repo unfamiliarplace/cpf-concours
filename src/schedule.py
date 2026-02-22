@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Iterator
 from concours import *
 import random
 
@@ -201,21 +202,21 @@ class ConcoursSchedule:
         
         return new_cs
     
-    def add_next_cat(self: ConcoursSchedule, cat: Category) -> ConcoursSchedule:
+    def get_ways_to_add_cat(self: ConcoursSchedule, cat: Category) -> Iterator[ConcoursSchedule]:
         rses = self.sort_rses_for_placement_of_category(cat)
         if not rses:
             raise CannotAddCategoryException(cat)
 
-        # TODO try all
-        return self.add_cat_to_rs(cat, rses[0])
+        for rs in rses:
+            yield self.add_cat_to_rs(cat, rs)
     
-    def add_next_judge(self: ConcoursSchedule, j: Judge) -> ConcoursSchedule:
+    def get_ways_to_add_judge(self: ConcoursSchedule, j: Judge) -> Iterator[ConcoursSchedule]:
         rses = self.sort_rses_for_placement_of_judge(j)
         if not rses:
             raise CannotAddJudgeException(j)
 
-        # TODO try all
-        return self.add_judge_to_rs(j, rses[0])
+        for rs in rses:
+            yield self.add_judge_to_rs(j, rs)
 
 class ConcoursScheduler:
 
@@ -225,29 +226,46 @@ class ConcoursScheduler:
 
     @staticmethod
     def create_valid_schedule(c: Concours) -> ConcoursSchedule:
-        s = ConcoursSchedule(c)
 
-        # TODO non-random order?
-        cats_to_add = list(c.categories.copy())
-        judges_to_add = list(c.judges.copy())
+        def add_next_item(s: ConcoursSchedule, cats: list[Category], judges: list[Judge]) -> tuple[bool, ConcoursSchedule|None]:
+            
+            # Base case 1: nothing more to place. Done!
+            if (not cats) and (not judges):
+                return True, s
+            
+            # Randomly place a cat or a judge
+            if (cats and not judges) or random.randint(0, 1):
+                cat, cats = cats[0], cats[1:]                
+                try:
+                    for new_s in s.get_ways_to_add_cat(cat):
+                        success, candidate = add_next_item(new_s, cats[:], judges[:])
+                        if success:
+                            return True, candidate
 
-        # TODO Experimental... just alternating
-        while cats_to_add or judges_to_add:
-            if cats_to_add:
-                cat = random.choice(cats_to_add)
-                s = s.add_next_cat(cat)
-                cats_to_add.remove(cat)
-        
-            if judges_to_add:
-                j = random.choice(judges_to_add)
-                s = s.add_next_judge(j)
-                judges_to_add.remove(j)
+                except CannotAddCategoryException:
+                    return False, None
 
-        for rs in s.rses:
-            print(rs)
-            print(rs.judges)
-            print(rs.categories)
-            print()
-        
-        return s
-    
+            else:
+                j, judges = judges[0], judges[1:]
+                try:
+                    for new_s in s.get_ways_to_add_judge(j):
+                        success, candidate = add_next_item(new_s, cats[:], judges[:])
+                        if success:
+                            return True, candidate
+
+                except CannotAddJudgeException:
+                    return False, None
+
+        # TODO Consider ordering categories and judges optimally
+        success, candidate = add_next_item(ConcoursSchedule(c), list(c.categories), list(c.judges))
+
+        # TODO Test
+        if success:
+            for rs in candidate.rses:
+                print(rs, rs.judges, rs.categories)
+                print()
+            
+            return candidate
+
+        else:
+            return None
