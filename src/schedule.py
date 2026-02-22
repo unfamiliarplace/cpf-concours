@@ -7,6 +7,11 @@ import random
 # e.g. Concours = 180 min; 6 rooms; mean per room = 30; value of 1.25 = max time 37.5 min
 MAX_TIME_IMBALANCE = 1.25
 
+# Maximum cats per room/schedule
+MAX_CATS = 3
+
+# TODO Min cats??
+
 class RoomSchedule:
     period: Period
     room: Room
@@ -144,11 +149,15 @@ class ConcoursSchedule:
             self.rses_to_eligible_judges[rs]
         ))
         
-        # Update eligibility based on time
-        new_cs.rses_to_eligible_cats[rs] = set(filter(
-            lambda cat: rs.can_accommodate_cat_duration(self.c.target_rs_duration, cat),
-            self.rses_to_eligible_cats[rs]
-        ))
+        # Update eligibility based on # of cats and time
+        if len(new_rs.categories) >= MAX_CATS:
+            new_cs.rses_to_eligible_cats[rs] = set()
+
+        else:
+            new_cs.rses_to_eligible_cats[rs] = set(filter(
+                lambda cat: rs.can_accommodate_cat_duration(self.c.target_rs_duration, cat),
+                self.rses_to_eligible_cats[rs]
+            ))
 
         return new_cs
 
@@ -166,16 +175,16 @@ class ConcoursSchedule:
     
     def get_ways_to_add_cat(self: ConcoursSchedule, cat: Category) -> Iterator[ConcoursSchedule]:
         rses = self.sort_rses_for_placement_of_category(cat)
-        if not rses:
-            print(f"Couldn't place {cat}")
+        # if not rses:
+        #     print(f"Couldn't place {cat}")
 
         for rs in rses:
             yield self.add_cat_to_rs(cat, rs)
     
     def get_ways_to_add_judge(self: ConcoursSchedule, j: Judge) -> Iterator[ConcoursSchedule]:
         rses = self.sort_rses_for_placement_of_judge(j)
-        if not rses:
-            print(f"Couldn't place {j}")
+        # if not rses:
+        #     print(f"Couldn't place {j}")
 
         for rs in rses:
             yield self.add_judge_to_rs(j, rs)
