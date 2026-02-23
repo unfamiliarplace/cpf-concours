@@ -8,7 +8,7 @@ MAX_TIME = 55
 
 # The maximum eligible time imbalance: how many multiples of the mean are allowed?
 # e.g. Concours = 180 min; 6 rooms; mean per room = 30; value of 1.25 = max time 37.5 min
-MAX_TIME_IMBALANCE = 1.25
+MAX_TIME_IMBALANCE = 1.2
 
 # Maximum cats per room/schedule
 MAX_CATS = 2
@@ -17,7 +17,6 @@ MIN_CATS = 1
 MAX_JUDGES = 3
 MIN_JUDGES = 2
 
-# TODO Min cats??
 # TODO Keep judges in same room??
 
 class RoomSchedule:
@@ -35,7 +34,8 @@ class RoomSchedule:
         return max(0, sum((c.projected_duration() + TRANSITION_BW_CATEGORIES) for c in self.categories) - TRANSITION_BW_CATEGORIES)
     
     def can_accommodate_cat_duration(self: RoomSchedule, target: int, cat: Category) -> bool:
-        return ((self.projected_duration() + cat.projected_duration()) / target) <= (target * MAX_TIME_IMBALANCE)
+        potential_duration = self.projected_duration() + cat.projected_duration()
+        return (potential_duration <= MAX_TIME) and (potential_duration / target <= MAX_TIME_IMBALANCE)
     
     def clone(self: RoomSchedule) -> RoomSchedule:
         rs = RoomSchedule(self.period, self.room)
@@ -166,9 +166,6 @@ class ConcoursSchedule:
         if len(new_rs.categories) >= MAX_CATS:
             new_cs.rses_to_eligible_cats[rs] = set()
 
-        elif rs.projected_duration() > MAX_TIME:
-            new_cs.rses_to_eligible_cats[rs] = set()
-
         else:
             new_cs.rses_to_eligible_cats[rs] = set(filter(
                 lambda cat: rs.can_accommodate_cat_duration(self.c.target_rs_duration, cat),
@@ -229,8 +226,8 @@ class ConcoursSchedule:
                 return False
             
             # TODO Similarly
-            # if rs.judges and (len(rs.categories) < MIN_CATS):
-            #     return False
+            if rs.judges and (len(rs.categories) < MIN_CATS):
+                return False
 
         return True
 
@@ -249,9 +246,30 @@ class ConcoursScheduler:
     @staticmethod
     def clone_rses(rses: set[RoomSchedule]) -> set[RoomSchedule]:
         return set(rs.clone() for rs in rses)
+    
+    @staticmethod
+    def cat_sort_terms(cat: Category) -> int:
+        """
+        Duration and # of unique candidate schools (decreasing order for both)
+        """
+        return [
+            -cat.projected_duration(),
+            -len(set(p.school for p in cat.contestants))
+        ]
+    
+    @staticmethod
+    def judge_sort_terms(j: Judge) -> int:
+        """
+        # of unique candidate schools (decreasing order)
+        """
+        return [
+            -len(set(p.school for p in j.school.contestants))
+        ]
 
     @staticmethod
     def create_valid_schedule(c: Concours) -> ConcoursSchedule:
+
+        n = [0]
 
         def add_next_item(s: ConcoursSchedule, cats: list[Category], judges: list[Judge]) -> tuple[bool, ConcoursSchedule|None]:
             # print(len(cats) + len(judges))
@@ -280,14 +298,25 @@ class ConcoursScheduler:
                         return True, candidate
                 
             # Somehow failed everywhere
+            n[0] += 1
+
+            if not (n[0] % 1_000):
+                print(f'Tested {n[0]}...')
+
             return False, None
 
-        # TODO Consider ordering categories and judges optimally
-        success, candidate = add_next_item(ConcoursSchedule(c), list(c.categories), list(c.judges))
+        # Sort
+        cats_ = list(c.categories)
+        judges_ = list(c.judges)
+
+        cats_.sort(key=ConcoursScheduler.cat_sort_terms)
+        judges_.sort(key=ConcoursScheduler.judge_sort_terms)
+
+        success, candidate = add_next_item(ConcoursSchedule(c), cats_, judges_)
 
         # TODO Test
         if success:
-            candidate.pretty_print()            
+            candidate.pretty_print()
             return candidate
 
         else:
