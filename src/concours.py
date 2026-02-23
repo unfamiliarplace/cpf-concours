@@ -83,11 +83,13 @@ class Category:
 
 class School:
     name: str
+    shortname: str
     judges: set[Judge]
     contestants: set[Contestant]
 
-    def __init__(self: School, name: str):
+    def __init__(self: School, name: str, shortname: str):
         self.name = name
+        self.shortname = shortname
         self.judges = set()
         self.contestants = set()
 
@@ -129,7 +131,7 @@ class Judge(SchoolPerson):
         return all(self.eligible_for_contestant(c) for c in cat.contestants)
 
     def __repr__(self: Judge) -> str:
-        return f'[J] {self.name}'
+        return f'[J:{self.school.shortname:<3}] {self.name}'
 
 class Contestant(SchoolPerson):
     category: Category

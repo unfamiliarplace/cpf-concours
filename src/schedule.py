@@ -3,21 +3,26 @@ from typing import Iterator
 from concours import *
 import random
 
+# TODO Keep judges in same room??
+
 # Max time in period
 MAX_TIME = 55
 
 # The maximum eligible time imbalance: how many multiples of the mean are allowed?
 # e.g. Concours = 180 min; 6 rooms; mean per room = 30; value of 1.25 = max time 37.5 min
-MAX_TIME_IMBALANCE = 1.2
+MAX_TIME_IMBALANCE = 1.25
 
 # Maximum cats per room/schedule
-MAX_CATS = 2
+MAX_CATS = 3
 MIN_CATS = 1
 
 MAX_JUDGES = 3
 MIN_JUDGES = 2
 
-# TODO Keep judges in same room??
+MAX_ATTEMPTS = 25_000
+
+class TooManyAttemptsException(Exception):
+    pass
 
 class RoomSchedule:
     period: Period
@@ -35,6 +40,7 @@ class RoomSchedule:
     
     def can_accommodate_cat_duration(self: RoomSchedule, target: int, cat: Category) -> bool:
         potential_duration = self.projected_duration() + cat.projected_duration()
+        # print(target, potential_duration, potential_duration <= MAX_TIME, (potential_duration / target <= MAX_TIME_IMBALANCE))
         return (potential_duration <= MAX_TIME) and (potential_duration / target <= MAX_TIME_IMBALANCE)
     
     def clone(self: RoomSchedule) -> RoomSchedule:
@@ -164,12 +170,12 @@ class ConcoursSchedule:
         
         # Update eligibility based on # of cats and time
         if len(new_rs.categories) >= MAX_CATS:
-            new_cs.rses_to_eligible_cats[rs] = set()
+            new_cs.rses_to_eligible_cats[new_rs] = set()
 
         else:
-            new_cs.rses_to_eligible_cats[rs] = set(filter(
-                lambda cat: rs.can_accommodate_cat_duration(self.c.target_rs_duration, cat),
-                self.rses_to_eligible_cats[rs]
+            new_cs.rses_to_eligible_cats[new_rs] = set(filter(
+                lambda cat: new_rs.can_accommodate_cat_duration(self.c.target_rs_duration, cat),
+                self.rses_to_eligible_cats[new_rs]
             ))
 
         return new_cs
@@ -186,7 +192,7 @@ class ConcoursSchedule:
         
         # Update eligibility based on # of judges
         if len(new_rs.judges) >= MAX_JUDGES:
-            new_cs.rses_to_eligible_judges[rs] = set()
+            new_cs.rses_to_eligible_judges[new_rs] = set()
         
         return new_cs
     
@@ -217,13 +223,14 @@ class ConcoursSchedule:
         # Remove useless RSes
         # TODO Not so good; instead use these to fix others?
         self.rses = set(filter(lambda rs: rs.categories or rs.judges, self.rses))
+        # return True # TODO
 
         for rs in self.rses:
 
             # TODO This could perhaps be improved by not rejecting outright
             # but by moving an eligible judge? Might defeat the purpose...
-            if rs.categories and (len(rs.judges) < MIN_JUDGES):
-                return False
+            # if rs.categories and (len(rs.judges) < MIN_JUDGES):
+            #     return False
             
             # TODO Similarly
             if rs.judges and (len(rs.categories) < MIN_CATS):
@@ -303,21 +310,32 @@ class ConcoursScheduler:
             if not (n[0] % 1_000):
                 print(f'Tested {n[0]}...')
 
+            if n[0] > MAX_ATTEMPTS:
+                raise TooManyAttemptsException(n[0])
+
             return False, None
 
         # Sort
         cats_ = list(c.categories)
         judges_ = list(c.judges)
+        
+        # strategy 1...
+        random.shuffle(cats_)
+        random.shuffle(judges_)
 
-        cats_.sort(key=ConcoursScheduler.cat_sort_terms)
-        judges_.sort(key=ConcoursScheduler.judge_sort_terms)
+        # cats_.sort(key=ConcoursScheduler.cat_sort_terms)
+        # judges_.sort(key=ConcoursScheduler.judge_sort_terms)
 
-        success, candidate = add_next_item(ConcoursSchedule(c), cats_, judges_)
+        try:
+            success, candidate = add_next_item(ConcoursSchedule(c), cats_, judges_)
 
-        # TODO Test
-        if success:
-            candidate.pretty_print()
-            return candidate
+            # TODO Test
+            if success:
+                candidate.pretty_print()
+                return candidate
 
-        else:
-            return None
+            else:
+                return None
+        
+        except TooManyAttemptsException:
+            print('Too many attempts. Gave up')
