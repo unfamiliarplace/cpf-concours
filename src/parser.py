@@ -85,7 +85,7 @@ class ConcoursParser:
                     school.judges.add(judge)
                     c.judges.add(judge)
             
-            for (i, contestant_id) in enumerate(cells[11:18]):
+            for (i, contestant_id) in enumerate(cells[11:27]):
                 if contestant_id:
                     cat = categories[i]
                     contestant = Contestant(contestant_id, school, cat)

@@ -3,6 +3,9 @@ from typing import Iterator
 from concours import *
 import random
 
+# Max time in period
+MAX_TIME = 55
+
 # The maximum eligible time imbalance: how many multiples of the mean are allowed?
 # e.g. Concours = 180 min; 6 rooms; mean per room = 30; value of 1.25 = max time 37.5 min
 MAX_TIME_IMBALANCE = 1.25
@@ -29,7 +32,7 @@ class RoomSchedule:
         self.categories = set()
     
     def projected_duration(self: RoomSchedule) -> int:
-        return sum((c.projected_duration() + TRANSITION_BW_CATEGORIES) for c in self.categories) - TRANSITION_BW_CATEGORIES
+        return max(0, sum((c.projected_duration() + TRANSITION_BW_CATEGORIES) for c in self.categories) - TRANSITION_BW_CATEGORIES)
     
     def can_accommodate_cat_duration(self: RoomSchedule, target: int, cat: Category) -> bool:
         return ((self.projected_duration() + cat.projected_duration()) / target) <= (target * MAX_TIME_IMBALANCE)
@@ -161,6 +164,9 @@ class ConcoursSchedule:
         
         # Update eligibility based on # of cats and time
         if len(new_rs.categories) >= MAX_CATS:
+            new_cs.rses_to_eligible_cats[rs] = set()
+
+        elif rs.projected_duration() > MAX_TIME:
             new_cs.rses_to_eligible_cats[rs] = set()
 
         else:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
  # Minutes for duration calculation
 TRANSITION_BW_SPEAKERS = 2
-TRANSITION_BW_CATEGORIES = 5
+TRANSITION_BW_CATEGORIES = 4
 
 class Concours:
     name: str
@@ -58,7 +58,7 @@ class Category:
         return f' {self.format} {self.age} {self.french}'
     
     def projected_duration(self: Category) -> int:
-        return ((self.base_duration + TRANSITION_BW_SPEAKERS) * len(self.contestants)) - TRANSITION_BW_SPEAKERS
+        return max(0, ((self.base_duration + TRANSITION_BW_SPEAKERS) * len(self.contestants)) - TRANSITION_BW_SPEAKERS)
     
     def eligible_for_judge(self: Category, judge: Judge) -> bool:
         return all(c.eligible_for_judge(judge) for c in self.contestants)
