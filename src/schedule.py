@@ -29,7 +29,7 @@ class RoomSchedule:
         self.categories = set()
     
     def projected_duration(self: RoomSchedule) -> int:
-        return sum(c.projected_duration() for c in self.categories)
+        return sum((c.projected_duration() + TRANSITION_BW_CATEGORIES) for c in self.categories) - TRANSITION_BW_CATEGORIES
     
     def can_accommodate_cat_duration(self: RoomSchedule, target: int, cat: Category) -> bool:
         return ((self.projected_duration() + cat.projected_duration()) / target) <= (target * MAX_TIME_IMBALANCE)
