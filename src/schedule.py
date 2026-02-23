@@ -100,28 +100,32 @@ class ConcoursSchedule:
         self.rses_to_eligible_judges = {rs: self.c.judges.copy() for rs in self.rses}
         self.rses_to_eligible_cats = {rs: self.c.categories.copy() for rs in self.rses}
     
-    def sort_rses_for_placement_of_category(self: ConcoursSchedule, cat: Category) -> list[RoomSchedule]:
+    def get_rses_for_placement_of_category(self: ConcoursSchedule, cat: Category) -> list[RoomSchedule]:
         """
-        1. Most categories sharing a format with this one
-        2. Most categories sharing an age group with this one
-        3. Most categories sharing a French level with this one
-        4. Fewest categories already
-        5. Shortest duration already
+        Get and sort.
+
+        1. Shortest duration already
+        2. Fewest categories already
+        3. Most categories sharing a format with this one
+        4. Most categories sharing an age group with this one
+        5. Most categories sharing a French level with this one
         """
         def _terms(rs: RoomSchedule) -> tuple[int]:
             return (
+                rs.projected_duration(),                
+                len(rs.categories),
                 -len([other for other in rs.categories if other.format == cat.format]),
                 -len([other for other in rs.categories if other.age == cat.age]),
                 -len([other for other in rs.categories if other.french == cat.french]),
-                len(rs.categories),
-                rs.projected_duration()
             )
 
         rses = filter(lambda rs: cat in self.rses_to_eligible_cats[rs], self.rses)
         return sorted(rses, key=_terms)
 
-    def sort_rses_for_placement_of_judge(self: ConcoursSchedule, j: Judge) -> list[RoomSchedule]:
+    def get_rses_for_placement_of_judge(self: ConcoursSchedule, j: Judge) -> list[RoomSchedule]:
         """
+        Get and sort.
+
         1. Fewest judges already
         2. Fewest judges from the same school
         """
@@ -184,7 +188,7 @@ class ConcoursSchedule:
         return new_cs
     
     def get_ways_to_add_cat(self: ConcoursSchedule, cat: Category) -> Iterator[ConcoursSchedule]:
-        rses = self.sort_rses_for_placement_of_category(cat)
+        rses = self.get_rses_for_placement_of_category(cat)
         # if not rses:
         #     print(f"Couldn't place {cat}")
 
@@ -192,7 +196,7 @@ class ConcoursSchedule:
             yield self.add_cat_to_rs(cat, rs)
     
     def get_ways_to_add_judge(self: ConcoursSchedule, j: Judge) -> Iterator[ConcoursSchedule]:
-        rses = self.sort_rses_for_placement_of_judge(j)
+        rses = self.get_rses_for_placement_of_judge(j)
         # if not rses:
         #     print(f"Couldn't place {j}")
 
@@ -225,7 +229,10 @@ class ConcoursSchedule:
         return True
 
     def pretty_print(self: ConcoursSchedule):
-        for rs in self.rses:
+        def _terms(rs: RoomSchedule) -> int:
+            return (str(rs.period), str(rs.room))
+
+        for rs in sorted(self.rses, key=_terms):
             # print(rs, rs.judges, rs.categories)
             print(f'{str(rs):<22} {rs.projected_duration():<3} {rs.categories}')
             print('\t', rs.judges)
