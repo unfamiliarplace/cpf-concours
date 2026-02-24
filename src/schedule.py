@@ -6,7 +6,7 @@ import random
 # TODO Keep judges in same room??
 
 # Max time in period
-MAX_TIME = 55
+MAX_TIME = 60
 
 # The maximum eligible time imbalance: how many multiples of the mean are allowed?
 # e.g. Concours = 180 min; 6 rooms; mean per room = 30; value of 1.25 = max time 37.5 min
@@ -16,10 +16,10 @@ MAX_TIME_IMBALANCE = 1.25
 MAX_CATS = 3
 MIN_CATS = 1
 
-MAX_JUDGES = 3
+MAX_JUDGES = 2
 MIN_JUDGES = 2
 
-MAX_ATTEMPTS = 50_000
+MAX_ATTEMPTS = 100_000
 
 class TooManyAttemptsException(Exception):
     pass
@@ -245,7 +245,7 @@ class ConcoursSchedule:
         guardrails during computation. But it might work for now!
         """
 
-        return True # TODO
+        # return True # TODO
 
         # Idea: let there be judges left over. they can just observe without voting, or be asked not to come.
 
@@ -258,12 +258,12 @@ class ConcoursSchedule:
 
             # TODO This could perhaps be improved by not rejecting outright
             # but by moving an eligible judge? Might defeat the purpose...
-            if rs.categories and (len(rs.judges) < MIN_JUDGES):
-                return False
+            # if rs.categories and (len(rs.judges) < MIN_JUDGES):
+            #     return False
             
             # TODO Similarly
-            if rs.judges and (len(rs.categories) < MIN_CATS):
-                return False
+            # if rs.judges and (len(rs.categories) < MIN_CATS):
+            #     return False
 
         return True
 
