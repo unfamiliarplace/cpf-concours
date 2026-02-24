@@ -222,6 +222,8 @@ class ConcoursSchedule:
 
         return True # TODO
 
+        # Idea: let there be judges left over. they can just observe without voting, or be asked not to come.
+
         # Remove useless RSes
         # TODO Not so good; instead use these to fix others?
         self.rses = set(filter(lambda rs: rs.categories or rs.judges, self.rses))
@@ -244,9 +246,12 @@ class ConcoursSchedule:
         def _terms(rs: RoomSchedule) -> int:
             return (str(rs.period), str(rs.room))
 
+        def format_cat_long(cat: Category) -> str:
+            return f'{cat} {(cat.projected_duration())} <{" ".join((p.school.shortname for p in cat.contestants))}>'
+
         for rs in sorted(self.rses, key=_terms):
             # print(rs, rs.judges, rs.categories)
-            print(f'{str(rs):<22} {rs.projected_duration():<3} {rs.categories}')
+            print(f'{str(rs):<22} {rs.projected_duration():<3} {", ".join((format_cat_long(cat) for cat in rs.categories))}')
             print('\t', rs.judges)
             print()
 
