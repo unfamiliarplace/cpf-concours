@@ -19,7 +19,7 @@ MIN_CATS = 1
 MAX_JUDGES = 3
 MIN_JUDGES = 2
 
-MAX_ATTEMPTS = 25_000
+MAX_ATTEMPTS = 50_000
 
 class TooManyAttemptsException(Exception):
     pass
@@ -220,17 +220,19 @@ class ConcoursSchedule:
         guardrails during computation. But it might work for now!
         """
 
+        return True # TODO
+
         # Remove useless RSes
         # TODO Not so good; instead use these to fix others?
         self.rses = set(filter(lambda rs: rs.categories or rs.judges, self.rses))
-        # return True # TODO
 
         for rs in self.rses:
+            pass
 
             # TODO This could perhaps be improved by not rejecting outright
             # but by moving an eligible judge? Might defeat the purpose...
-            # if rs.categories and (len(rs.judges) < MIN_JUDGES):
-            #     return False
+            if rs.categories and (len(rs.judges) < MIN_JUDGES):
+                return False
             
             # TODO Similarly
             if rs.judges and (len(rs.categories) < MIN_CATS):
@@ -277,6 +279,7 @@ class ConcoursScheduler:
     def create_valid_schedule(c: Concours) -> ConcoursSchedule:
 
         n = [0]
+        cat_or_judge = [0] # 0 = cat, 1 = judge
 
         def add_next_item(s: ConcoursSchedule, cats: list[Category], judges: list[Judge]) -> tuple[bool, ConcoursSchedule|None]:
             # print(len(cats) + len(judges))
@@ -289,12 +292,15 @@ class ConcoursScheduler:
                     return False, None
             
             # Randomly choose whether to place a cat or a judge
-            if cats and (not judges or random.randint(0, 1)):
+            if cats and (not judges or cat_or_judge[0] == 0):
                 cat, cats = cats[0], cats[1:]
                 for new_s in s.get_ways_to_add_cat(cat):
                     success, candidate = add_next_item(new_s, cats[:], judges[:])
                     if success: # Only finds one successful candidate
                         return True, candidate
+                    
+                # Judge next
+                cat_or_judge[0] = 1
 
             # Same logic for judge
             else:
@@ -303,6 +309,9 @@ class ConcoursScheduler:
                     success, candidate = add_next_item(new_s, cats[:], judges[:])
                     if success:
                         return True, candidate
+                    
+                # Cat next
+                cat_or_judge[0] = 0
                 
             # Somehow failed everywhere
             n[0] += 1
@@ -323,8 +332,9 @@ class ConcoursScheduler:
         random.shuffle(cats_)
         random.shuffle(judges_)
 
-        # cats_.sort(key=ConcoursScheduler.cat_sort_terms)
-        # judges_.sort(key=ConcoursScheduler.judge_sort_terms)
+        # strategy 2...
+        cats_.sort(key=ConcoursScheduler.cat_sort_terms)
+        judges_.sort(key=ConcoursScheduler.judge_sort_terms)
 
         try:
             success, candidate = add_next_item(ConcoursSchedule(c), cats_, judges_)
