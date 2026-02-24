@@ -43,6 +43,16 @@ class RoomSchedule:
         # print(target, potential_duration, potential_duration <= MAX_TIME, (potential_duration / target <= MAX_TIME_IMBALANCE))
         return (potential_duration <= MAX_TIME) and (potential_duration / target <= MAX_TIME_IMBALANCE)
     
+    def get_cat_schools(self: RoomSchedule) -> set[School]:
+        schools = set()
+        for cat in self.categories:
+            schools |= cat.get_schools()
+        return schools
+
+    def get_eligible_judges(self: RoomSchedule, available: set[Judge]) -> set[Judge]:
+        schools = self.get_cat_schools()
+        return set(filter(lambda j: j.school not in schools, available))
+    
     def clone(self: RoomSchedule) -> RoomSchedule:
         rs = RoomSchedule(self.period, self.room)
         rs.judges = self.judges.copy()
@@ -115,14 +125,16 @@ class ConcoursSchedule:
 
         1. Shortest duration already
         2. Fewest categories already
-        3. Most categories sharing a format with this one
-        4. Most categories sharing an age group with this one
-        5. Most categories sharing a French level with this one
+        3. Most overlap in schools (but what about judges?)
+        4. Most categories sharing a format with this one
+        5. Most categories sharing an age group with this one
+        6. Most categories sharing a French level with this one
         """
         def _terms(rs: RoomSchedule) -> tuple[int]:
             return (
                 rs.projected_duration(),                
                 len(rs.categories),
+                -len(rs.get_cat_schools().intersection(cat.get_schools())),
                 -len([other for other in rs.categories if other.format == cat.format]),
                 -len([other for other in rs.categories if other.age == cat.age]),
                 -len([other for other in rs.categories if other.french == cat.french]),
@@ -135,17 +147,30 @@ class ConcoursSchedule:
         """
         Get and sort.
 
-        1. Fewest judges already
-        2. Fewest judges from the same school
+        1. Does not have min judges yet (possibly remove)
+        2. Fewest eligible judges available
+        3. Fewest judges already
+        4. Fewest judges from the same school
         """
         def _terms(rs: RoomSchedule) -> tuple[int]:
             return (
+                (len(rs.judges) < MIN_JUDGES),
+                len(rs.get_eligible_judges(self.unmatched_judges())),
                 len(rs.judges),
                 len([other for other in rs.judges if other.school == j.school])
             )
 
         rses = filter(lambda rs: j in self.rses_to_eligible_judges[rs], self.rses)
         return sorted(rses, key=_terms)
+    
+    def unmatched_judges(self: ConcoursSchedule) -> set[Judge]:
+        """
+        TODO Inefficient (can just store them when making a CS) but for now
+        """
+        judges = self.c.judges
+        for rs in self.rses:
+            judges -= rs.judges
+        return judges
     
     def match_rs(self: ConcoursSchedule, rs: RoomSchedule) -> RoomSchedule:
         """

@@ -62,6 +62,12 @@ class Category:
     
     def eligible_for_judge(self: Category, judge: Judge) -> bool:
         return all(c.eligible_for_judge(judge) for c in self.contestants)
+    
+    def get_eligible_judges(self: Category, available: set[Judge]) -> set[Judge]:
+        return set(filter(lambda j: self.eligible_for_judge(j), available))
+    
+    def get_schools(self: Category) -> set[School]:
+        return set(cont.school for cont in self.contestants)
 
     def shortname(self: Category) -> str:
         age = 'J' if self.age == '9/10' else 'S'
