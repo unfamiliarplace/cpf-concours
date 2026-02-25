@@ -53,6 +53,9 @@ class RoomSchedule:
         schools = self.get_cat_schools()
         return set(filter(lambda j: j.school not in schools, available))
     
+    def validate_min_judges(self: RoomSchedule) -> bool:
+        return self.categories and (len(self.judges) >= MIN_JUDGES)
+    
     def clone(self: RoomSchedule) -> RoomSchedule:
         rs = RoomSchedule(self.period, self.room)
         rs.judges = self.judges.copy()
@@ -237,6 +240,16 @@ class ConcoursSchedule:
         for rs in rses:
             yield self.add_judge_to_rs(j, rs)
 
+    def validate_rses_sufficient_judges(self: ConcoursSchedule) -> bool:
+        for rs in self.rses:
+
+            # TODO This could perhaps be improved by not rejecting outright
+            # but by moving an eligible judge? Might defeat the purpose...
+            if not rs.validate_min_judges():
+                return False
+
+        return True
+
     def is_valid(self: ConcoursSchedule) -> bool:
         """
         This is the last-ditch effort. It only gets run after all
@@ -245,27 +258,8 @@ class ConcoursSchedule:
         guardrails during computation. But it might work for now!
         """
 
-        # return True # TODO
-
-        # Idea: let there be judges left over. they can just observe without voting, or be asked not to come.
-
-        # Remove useless RSes
-        # TODO Not so good; instead use these to fix others?
-        self.rses = set(filter(lambda rs: rs.categories or rs.judges, self.rses))
-
-        for rs in self.rses:
-            pass
-
-            # TODO This could perhaps be improved by not rejecting outright
-            # but by moving an eligible judge? Might defeat the purpose...
-            # if rs.categories and (len(rs.judges) < MIN_JUDGES):
-            #     return False
-            
-            # TODO Similarly
-            # if rs.judges and (len(rs.categories) < MIN_CATS):
-            #     return False
-
         return True
+        return self.validate_rses_sufficient_judges()
 
     def pretty_print(self: ConcoursSchedule):
         def _terms(rs: RoomSchedule) -> int:
@@ -314,8 +308,12 @@ class ConcoursScheduler:
         def add_next_item(s: ConcoursSchedule, cats: list[Category], judges: list[Judge]) -> tuple[bool, ConcoursSchedule|None]:
             # print(len(cats) + len(judges))
             
-            # Base case 1: nothing more to place. Done!
+            # Base case 1: nothing more to place. Done! Note: leftover judges are OK.
             if (not cats) and (not judges):
+                    
+                # Purge empty rses
+                s.rses = set(filter(lambda rs: rs.categories or rs.judges, s.rses))
+            
                 if s.is_valid():
                     return True, s
                 else:
@@ -334,6 +332,7 @@ class ConcoursScheduler:
 
             # Same logic for judge
             else:
+                
                 j, judges = judges[0], judges[1:]
                 for new_s in s.get_ways_to_add_judge(j):
                     success, candidate = add_next_item(new_s, cats[:], judges[:])
@@ -367,15 +366,8 @@ class ConcoursScheduler:
         judges_.sort(key=ConcoursScheduler.judge_sort_terms)
 
         try:
-            success, candidate = add_next_item(ConcoursSchedule(c), cats_, judges_)
-
-            # TODO Test
-            if success:
-                candidate.pretty_print()
-                return candidate
-
-            else:
-                return None
+            _, candidate = add_next_item(ConcoursSchedule(c), cats_, judges_)
+            return candidate
         
         except TooManyAttemptsException:
             print('Too many attempts. Gave up')

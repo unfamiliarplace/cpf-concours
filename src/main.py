@@ -16,6 +16,10 @@ def run():
     #     print(cat, cat.base_duration, len(cat.contestants), cat.projected_duration())
 
     sched = CS.create_valid_schedule(c)
+    if sched:
+        sched.pretty_print()
+    else:
+        print('Could not create a valid schedule.')
 
 if __name__ == '__main__':
     run()
