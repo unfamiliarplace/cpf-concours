@@ -5,6 +5,9 @@ import random
 
 # TODO Keep judges in same room??
 
+# Test
+NO_VALIDATION = True
+
 # Max time in period
 MAX_TIME = 60
 
@@ -258,7 +261,9 @@ class ConcoursSchedule:
         guardrails during computation. But it might work for now!
         """
 
-        return True
+        if NO_VALIDATION:
+            return True
+        
         return self.validate_rses_sufficient_judges()
 
     def pretty_print(self: ConcoursSchedule):
