@@ -6,7 +6,8 @@ import random
 # TODO Keep judges in same room??
 
 # Test
-NO_VALIDATION = True
+NO_VALIDATION = False
+NO_VALIDATION = True # TEST
 
 # Max time in period
 MAX_TIME = 60
@@ -88,6 +89,9 @@ class ConcoursSchedule:
     rses_to_eligible_judges: dict[RoomSchedule, Judge]
     rses_to_eligible_cats: dict[RoomSchedule, Category]
 
+    placeable_judges: set[Judge]
+    placeable_cats: set[Category]
+
     def __init__(self: ConcoursSchedule, c: Concours):
         self.c = c
         self.reset()
@@ -107,11 +111,15 @@ class ConcoursSchedule:
         for rs in self.rses_to_eligible_cats:
             cs.rses_to_eligible_cats[rs] = self.rses_to_eligible_cats[rs].copy()
 
+        cs.placeable_judges = self.placeable_judges.copy()
+        cs.placeable_cats = self.placeable_cats.copy()
+
         return cs
 
     def reset(self: ConcoursSchedule):
         self.make_initial_room_schedules()
         self.make_initial_rs_relationships()
+        self.make_initial_placeabilities()
     
     def make_initial_room_schedules(self: ConcoursSchedule):        
         self.rses = set()
@@ -124,6 +132,31 @@ class ConcoursSchedule:
     def make_initial_rs_relationships(self: ConcoursSchedule):
         self.rses_to_eligible_judges = {rs: self.c.judges.copy() for rs in self.rses}
         self.rses_to_eligible_cats = {rs: self.c.categories.copy() for rs in self.rses}
+        
+    def make_initial_placeabilities(self: ConcoursSchedule):
+        self.placeable_judges = self.c.judges.copy()
+        self.placeable_cats = self.c.categories.copy()
+
+    def filter_rses_for_placement_of_category(self: ConcoursSchedule, cat: Category) -> set[RoomSchedule]:
+        """
+        Is the cat eligible for this RS?
+        Would adding the cat make it impossible to add a judge to this RS? (i.e., the RS's eligible judges overlaps with the cat's.)
+        """
+        def _terms(rs: RoomSchedule) -> bool:
+            return all([
+                cat in self.rses_to_eligible_cats[rs],
+                (len(rs.judges) < MIN_JUDGES) and cat.get_eligible_judges(self.rses_to_eligible_judges[rs])
+            ])
+
+        return filter(_terms, self.rses)
+
+    def filter_rses_for_placement_of_judge(self: ConcoursSchedule, j: Judge) -> set[RoomSchedule]:
+        def _terms(rs: RoomSchedule) -> bool:
+            return all([
+                j in self.rses_to_eligible_judges[rs]
+            ])
+
+        return filter(_terms, self.rses)
     
     def get_rses_for_placement_of_category(self: ConcoursSchedule, cat: Category) -> list[RoomSchedule]:
         """
@@ -146,7 +179,7 @@ class ConcoursSchedule:
                 -len([other for other in rs.categories if other.french == cat.french]),
             )
 
-        rses = filter(lambda rs: cat in self.rses_to_eligible_cats[rs], self.rses)
+        rses = self.filter_rses_for_placement_of_category(cat)
         return sorted(rses, key=_terms)
 
     def get_rses_for_placement_of_judge(self: ConcoursSchedule, j: Judge) -> list[RoomSchedule]:
@@ -166,7 +199,7 @@ class ConcoursSchedule:
                 len([other for other in rs.judges if other.school == j.school])
             )
 
-        rses = filter(lambda rs: j in self.rses_to_eligible_judges[rs], self.rses)
+        rses = self.filter_rses_for_placement_of_judge(j)
         return sorted(rses, key=_terms)
     
     def unmatched_judges(self: ConcoursSchedule) -> set[Judge]:
@@ -198,7 +231,9 @@ class ConcoursSchedule:
             lambda j: j.eligible_for_category(cat),
             self.rses_to_eligible_judges[rs]
         ))
-        
+
+        new_cs.placeable_cats.remove(cat)
+
         # Update eligibility based on # of cats and time
         if len(new_rs.categories) >= MAX_CATS:
             new_cs.rses_to_eligible_cats[new_rs] = set()
@@ -220,6 +255,8 @@ class ConcoursSchedule:
             lambda cat: cat.eligible_for_judge(j),
             self.rses_to_eligible_cats[rs]
         ))
+
+        new_cs.placeable_judges.remove(j)
         
         # Update eligibility based on # of judges
         if len(new_rs.judges) >= MAX_JUDGES:

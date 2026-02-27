@@ -26,3 +26,10 @@ Algorithm:
 6. If all are placed, submit that branch.
 
 Can be improved by replacing "random" with "optimal" (e.g., by sorting so as to keep similar categories together, judges with the same room across periods, judges from the same school not together).
+
+Ideas round 3:
+
+* Manually place...
+* Try placing all categories, and only then placing judges until each room has enough.
+* The moment an RS still needs a judge but now has no placeable ones, terminate early.
+*  
