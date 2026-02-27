@@ -81,9 +81,10 @@ class ConcoursParser:
 
             if cells[11]:
                 for j in cells[11].split(','):
-                    judge = Judge(j, school)
-                    school.judges.add(judge)
-                    c.judges.add(judge)
+                    for p in c.periods:
+                        judge = Judge(j, school, p)
+                        school.judges.add(judge)
+                        c.judges.add(judge)
             
             for (i, contestant_id) in enumerate(cells[12:28]):
                 if contestant_id:

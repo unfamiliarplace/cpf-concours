@@ -7,7 +7,7 @@ import random
 
 # Test
 VALIDATION = True
-# VALIDATION = False # TEST
+VALIDATION = False # TEST
 
 # Max time in period
 MAX_TIME = 60
@@ -20,7 +20,7 @@ MAX_TIME_IMBALANCE = 1.25
 MAX_CATS = 3
 MIN_CATS = 1
 
-MAX_JUDGES = 2
+MAX_JUDGES = 4
 MIN_JUDGES = 2
 
 MAX_ATTEMPTS = 100_000
@@ -153,6 +153,7 @@ class ConcoursSchedule:
     def filter_rses_for_placement_of_judge(self: ConcoursSchedule, j: Judge) -> set[RoomSchedule]:
         def _terms(rs: RoomSchedule) -> bool:
             return all([
+                j.period == rs.period,
                 j in self.rses_to_eligible_judges[rs]
             ])
 
@@ -400,8 +401,8 @@ class ConcoursScheduler:
         judges_ = list(c.judges)
         
         # strategy 1...
-        random.shuffle(cats_)
-        random.shuffle(judges_)
+        # random.shuffle(cats_)
+        # random.shuffle(judges_)
 
         # strategy 2...
         cats_.sort(key=ConcoursScheduler.cat_sort_terms)

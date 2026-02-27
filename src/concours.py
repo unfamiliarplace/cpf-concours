@@ -133,6 +133,11 @@ class SchoolPerson(Person):
         self.school = school
 
 class Judge(SchoolPerson):
+    period: Period # Because a judge can be in different places in each period
+
+    def __init__(self: Judge, name: str, school: School, period: Period):
+        super().__init__(name, school)
+        self.period = period
     
     def eligible_for_contestant(self: Judge, contestant: Contestant) -> bool:
         return self.school != contestant.school
@@ -142,6 +147,9 @@ class Judge(SchoolPerson):
 
     def __repr__(self: Judge) -> str:
         return f'[J:{self.school.shortname:<3}] {self.name}'
+
+    def __hash__(self: Judge) -> int:
+        return hash(('Judge', self.name, self.period))
 
 class Contestant(SchoolPerson):
     category: Category
@@ -171,6 +179,9 @@ class Period:
     def __repr__(self: Period) -> str:
         # return f'Period: {self.name}'
         return f'PER {self.name}'
+    
+    def __eq__(self: Period, other: object) -> bool:
+        return isinstance(other, Period) and (other.name == self.name)
 
     def __hash__(self: Period) -> int:
         return hash(('Period', self.name))
