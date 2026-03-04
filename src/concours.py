@@ -9,11 +9,11 @@ DURATION_SEPARATOR = ":"
 PROMPT_PHOTO = 'Photo'
 PROMPT_PHRASE = 'Phrase'
 
-FORMATS = ('Traditionnel', 'Impromptu')
+SFORMATS = ('Traditionnel', 'Impromptu')
 GRADES = ('9/10', '11/12')
 LEVELS = ('Cadre', 'Intensif', 'Immersion', 'Francophone')
 
-FORMAT_TO_ABBREVIATION = {
+SFORMAT_TO_ABBREVIATION = {
     'Traditional': 'T',
     'Impromptu': 'I'
 }
@@ -28,6 +28,20 @@ LEVEL_TO_ABBREVIATION = {
     'Intensif': 'E',
     'Immersion': 'M',
     'Francophone': 'F'
+}
+
+# Accommodating myself...?
+
+INPUT_SFORMAT_TO_FULL = {
+    'T': 'Traditional',
+    'I': 'Impromptu'
+}
+
+INPUT_LEVEL_TO_FULL = {
+    'Cad.'      : 'Cadre',
+    'Inten.'    : 'Intensif',
+    'Imm.'      : 'Immersion',
+    'Fr.'       : 'Francophone'
 }
 
 class Concours:
@@ -89,19 +103,19 @@ class Concours:
         self.target_rs_duration = self.projected_duration() // n_rses
 
 class Category:
-    format: str
+    sformat: str
     grade: str
     level: str
     base_duration: int
     contestants: set[Contestant]
 
-    def __init__(self: Category, format: str, grade: str, level: str, base_duration: int):
-        self.format, self.grade, self.level = format, grade, level
+    def __init__(self: Category, sformat: str, grade: str, level: str, base_duration: int):
+        self.sformat, self.grade, self.level = sformat, grade, level
         self.base_duration = base_duration
         self.contestants = set()
 
     def name(self: Category) -> str:
-        return f' {self.format} {self.grade} {self.level}'
+        return f' {self.sformat} {self.grade} {self.level}'
     
     def projected_duration(self: Category) -> int:
         return max(0, ((self.base_duration + TRANSITION_BW_SPEAKERS) * len(self.contestants)) - TRANSITION_BW_SPEAKERS)
@@ -120,7 +134,7 @@ class Category:
         return set(filter(lambda j: j.school not in schools, judges))
 
     def shortname(self: Category) -> str:
-        return f'{self.format}{GRADE_TO_ABBREVIATION[self.grade]}{LEVEL_TO_ABBREVIATION[self.level]}'
+        return f'{self.sformat}{GRADE_TO_ABBREVIATION[self.grade]}{LEVEL_TO_ABBREVIATION[self.level]}'
 
     def __repr__(self: Category) -> str:
         # return f'Cat: {self.name()}'
@@ -319,11 +333,25 @@ class Evaluation:
     scores: tuple[float]
     comments: str
 
+    # Convenience
+    contestant: Contestant
+    category: Category
+    sformat: str
+    grade: str
+    level: str
+
     def __init__(self: Evaluation, judge: Judge, speech: Speech, scores: tuple[float]):
         self.judge = judge
         self.speech = speech
         self.scores = scores
         self.comments = ""
+
+        # Convenience
+        self.contestant = speech.contestant
+        self.category = self.contestant.category
+        self.sformat = self.category.sformat
+        self.grade = self.category.grade
+        self.level = self.category.level
 
     def __repr__(self: Evaluation) -> str:
         # return f'Evaluation: {self.name}'

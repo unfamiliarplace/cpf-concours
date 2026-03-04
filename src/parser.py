@@ -2,8 +2,8 @@ from pathlib import Path
 from concours import *
 import openpyxl
 
-FORMAT_TRADITIONAL = 'Traditionnel'
-FORMAT_IMPROMPTU = 'Impromptu'
+SFORMAT_TRADITIONAL = 'Traditionnel'
+SFORMAT_IMPROMPTU = 'Impromptu'
 
 class ConcoursParser:
     
@@ -67,8 +67,9 @@ class ConcoursParser:
                 cat_id = rows[1][col].value.replace('\n', ' ')
                 dur = int(rows[3][col].value)
 
-                age, french = cat_id.split()
-                cat = Category(prefix, age, french, dur)
+                grade, level = cat_id.split()
+                sformat, level = INPUT_SFORMAT_TO_FULL[prefix], INPUT_LEVEL_TO_FULL[level]
+                cat = Category(sformat, grade, level, dur)
                 categories.append(cat)
                 c.categories.add(cat)
         
@@ -130,8 +131,8 @@ class ScoreboardParser:
             judge = sb.concours.get_judge(judge_name)
             contestant = sb.concours.get_contestant(contestant_name)
 
-            format = row[1].value
-            if format == FORMAT_TRADITIONAL:
+            sformat = row[1].value
+            if sformat == SFORMAT_TRADITIONAL:
                 scores = tuple(c.value for c in row[11:16])
                 title = "" # TODO
 

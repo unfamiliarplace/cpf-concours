@@ -166,7 +166,7 @@ class ConcoursSchedule:
         1. Shortest duration already
         2. Fewest categories already
         3. Most overlap in schools (but what about judges?)
-        4. Most categories sharing a format with this one
+        4. Most categories sharing a sformat with this one
         5. Most categories sharing an age group with this one
         6. Most categories sharing a French level with this one
         """
@@ -175,9 +175,9 @@ class ConcoursSchedule:
                 rs.projected_duration(),                
                 len(rs.categories),
                 -len(rs.get_cat_schools().intersection(cat.get_schools())),
-                -len([other for other in rs.categories if other.format == cat.format]),
-                -len([other for other in rs.categories if other.age == cat.age]),
-                -len([other for other in rs.categories if other.french == cat.french]),
+                -len([other for other in rs.categories if other.sformat == cat.sformat]),
+                -len([other for other in rs.categories if other.grade == cat.grade]),
+                -len([other for other in rs.categories if other.level == cat.level]),
             )
 
         rses = self.filter_rses_for_placement_of_category(cat)

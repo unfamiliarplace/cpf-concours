@@ -17,36 +17,62 @@ class EvaluationsTool:
                 totals[i] += e.scores[i]
 
         for i in range(5):
-            totals[i] = round(totals[i] / len(es), 1)
+            if not es:
+                totals[i] = 0.0
+            else:
+                totals[i] = round(totals[i] / len(es), 1)
 
         return totals
     
     @staticmethod
     def average(es: set[Evaluation]) -> float:
-        return round(sum(sum(e.scores) for e in es) / len(es), 1)
+        if not es:
+            return 0.0
+        else:
+            return round(sum(sum(e.scores) for e in es) / len(es), 1)
     
     @staticmethod
     def do_report(c: Concours):
-        et = EvaluationsTool
-        es = et.evaluations_with_scores(c.scoreboard)
+        ET = EvaluationsTool
+        es = ET.evaluations_with_scores(c.scoreboard)
         er = EvaluationsReport()
 
         for judge in c.judges:
-            er.judge_to_es = set(filter(lambda e: e.judge == judge, es))
+            er.judge_to_es[judge] = set(filter(lambda e: e.judge == judge, es))
 
-        for contestant in c.contestants:
-            er.contestant_to_es = set(filter(lambda e: e.speech.contestant == contestant, es))
+        for cont in c.contestants:
+            er.contestant_to_es[cont] = set(filter(lambda e: e.speech.contestant == cont, es))
             # by_contestant[contestant] = (et.average(_es), et.averages(_es))
             # for con in sorted(by_contestant, key=lambda c: c.name):
             #     print(con, by_contestant[con])
 
-        for format in FORMATS:
-            pass
+        for sformat in SFORMATS:
+            er.sformat_to_es[sformat] = set(filter(lambda e: e.sformat == sformat, es))
+
+        for grade in GRADES:
+            er.grade_to_es[grade] = set(filter(lambda e: e.grade == grade, es))
+
+        for level in LEVELS:
+            er.level_to_es[level] = set(filter(lambda e: e.level == level, es))
+
+        for e in es:
+            bucket = round(e.speech.duration / 60)
+            er.duration_to_es_by_bucket.setdefault(bucket, {e}).add(e)
+        
+        for cat in c.categories:
+            conts = set(filter(lambda cont: cont.category == cat, c.contestants))
+            er.category_to_places[cat] = sorted(conts, key=lambda cont: ET.average(er.contestant_to_es[cont]), reverse=True)
+
+        for school in c.schools:
+            er.school_to_es_given[school] = set(filter(lambda e: e.judge.school == school, es))
+            er.school_to_es_received[school] = set(filter(lambda e: e.contestant.school == school, es))
+        
+        return er
 
 class EvaluationsReport:
     judge_to_es: dict[Judge, set[Evaluation]]
     contestant_to_es: dict[Contestant, set[Evaluation]]
-    format_to_es: dict[str, set[Evaluation]]
+    sformat_to_es: dict[str, set[Evaluation]]
     grade_to_es: dict[str, set[Evaluation]]
     level_to_es: dict[str, set[Evaluation]]
     duration_to_es_by_bucket: dict[int, set[Evaluation]] # Bucket by # of minutes?
@@ -57,7 +83,7 @@ class EvaluationsReport:
     def __init__(self: EvaluationsReport):
         self.judge_to_es = {}
         self.contestant_to_es = {}
-        self.format_to_es = {}
+        self.sformat_to_es = {}
         self.grade_to_es = {}
         self.level_to_es = {}
         self.duration_to_es_by_bucket = {}

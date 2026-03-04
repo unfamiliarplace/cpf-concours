@@ -24,7 +24,8 @@ def run():
     #     print('Could not create a valid schedule.')
 
     ScoreboardParser.parse(PATH_HARDCODED_EVALUATIONS_FILE, c)
-    ET.do_report(c)
+    report = ET.do_report(c)
+    print(report)
 
 if __name__ == '__main__':
     run()
