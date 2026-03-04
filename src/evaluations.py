@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from concours import *
 
-class EvaluationsTool:
+class EvaluationTools:
     
     @staticmethod
     def evaluations_with_scores(sb: Scoreboard) -> set[Evaluation]:
@@ -30,46 +30,8 @@ class EvaluationsTool:
             return 0.0
         else:
             return round(sum(sum(e.scores) for e in es) / len(es), 1)
-    
-    @staticmethod
-    def do_report(c: Concours):
-        ET = EvaluationsTool
-        es = ET.evaluations_with_scores(c.scoreboard)
-        er = EvaluationsReport()
 
-        for judge in c.judges:
-            er.judge_to_es[judge] = set(filter(lambda e: e.judge == judge, es))
-
-        for cont in c.contestants:
-            er.contestant_to_es[cont] = set(filter(lambda e: e.speech.contestant == cont, es))
-            # by_contestant[contestant] = (et.average(_es), et.averages(_es))
-            # for con in sorted(by_contestant, key=lambda c: c.name):
-            #     print(con, by_contestant[con])
-
-        for sformat in SFORMATS:
-            er.sformat_to_es[sformat] = set(filter(lambda e: e.sformat == sformat, es))
-
-        for grade in GRADES:
-            er.grade_to_es[grade] = set(filter(lambda e: e.grade == grade, es))
-
-        for level in LEVELS:
-            er.level_to_es[level] = set(filter(lambda e: e.level == level, es))
-
-        for e in es:
-            bucket = round(e.speech.duration / 60)
-            er.duration_to_es_by_bucket.setdefault(bucket, {e}).add(e)
-        
-        for cat in c.categories:
-            conts = set(filter(lambda cont: cont.category == cat, c.contestants))
-            er.category_to_places[cat] = sorted(conts, key=lambda cont: ET.average(er.contestant_to_es[cont]), reverse=True)
-
-        for school in c.schools:
-            er.school_to_es_given[school] = set(filter(lambda e: e.judge.school == school, es))
-            er.school_to_es_received[school] = set(filter(lambda e: e.contestant.school == school, es))
-        
-        return er
-
-class EvaluationsReport:
+class ConcoursReport:
     judge_to_es: dict[Judge, set[Evaluation]]
     contestant_to_es: dict[Contestant, set[Evaluation]]
     sformat_to_es: dict[str, set[Evaluation]]
@@ -80,7 +42,7 @@ class EvaluationsReport:
     school_to_es_given: dict[School, set[Evaluation]]
     school_to_es_received: dict[School, set[Evaluation]]
 
-    def __init__(self: EvaluationsReport):
+    def __init__(self: ConcoursReport, c: Concours):
         self.judge_to_es = {}
         self.contestant_to_es = {}
         self.sformat_to_es = {}
@@ -90,4 +52,37 @@ class EvaluationsReport:
         self.category_to_places = {}
         self.school_to_es_given = {}
         self.school_to_es_received = {}
+
+        ET = EvaluationTools
+        es = ET.evaluations_with_scores(c.scoreboard)
+
+        for judge in c.judges:
+            self.judge_to_es[judge] = set(filter(lambda e: e.judge == judge, es))
+
+        for cont in c.contestants:
+            self.contestant_to_es[cont] = set(filter(lambda e: e.speech.contestant == cont, es))
+            # by_contestant[contestant] = (et.average(_es), et.averages(_es))
+            # for con in sorted(by_contestant, key=lambda c: c.name):
+            #     print(con, by_contestant[con])
+
+        for sformat in SFORMATS:
+            self.sformat_to_es[sformat] = set(filter(lambda e: e.sformat == sformat, es))
+
+        for grade in GRADES:
+            self.grade_to_es[grade] = set(filter(lambda e: e.grade == grade, es))
+
+        for level in LEVELS:
+            self.level_to_es[level] = set(filter(lambda e: e.level == level, es))
+
+        for e in es:
+            bucket = round(e.speech.duration / 60)
+            self.duration_to_es_by_bucket.setdefault(bucket, {e}).add(e)
+        
+        for cat in c.categories:
+            conts = set(filter(lambda cont: cont.category == cat, c.contestants))
+            self.category_to_places[cat] = sorted(conts, key=lambda cont: ET.average(self.contestant_to_es[cont]), reverse=True)
+
+        for school in c.schools:
+            self.school_to_es_given[school] = set(filter(lambda e: e.judge.school == school, es))
+            self.school_to_es_received[school] = set(filter(lambda e: e.contestant.school == school, es))
 

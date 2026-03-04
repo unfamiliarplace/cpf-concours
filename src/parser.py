@@ -1,6 +1,7 @@
 from pathlib import Path
 from concours import *
 import openpyxl
+import warnings
 
 SFORMAT_TRADITIONAL = 'Traditionnel'
 SFORMAT_IMPROMPTU = 'Impromptu'
@@ -107,8 +108,8 @@ class ScoreboardParser:
         sb.concours = c
         c.scoreboard = sb
 
+        warnings.simplefilter(action='ignore', category=UserWarning)
         wb = openpyxl.load_workbook(path)
-
         ScoreboardParser.parse_evaluations(sb, wb)
 
     @staticmethod

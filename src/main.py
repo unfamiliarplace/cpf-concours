@@ -1,7 +1,7 @@
 from pathlib import Path
 from parser import ConcoursParser, ScoreboardParser
 from schedule import ConcoursScheduler as CS
-from evaluations import EvaluationsTool as ET
+from evaluations import ConcoursReport as CR
 
 PATH_BASE = Path('./src')
 PATH_INPUT = PATH_BASE / 'input'
@@ -24,7 +24,7 @@ def run():
     #     print('Could not create a valid schedule.')
 
     ScoreboardParser.parse(PATH_HARDCODED_EVALUATIONS_FILE, c)
-    report = ET.do_report(c)
+    report = CR(c)
     print(report)
 
 if __name__ == '__main__':
