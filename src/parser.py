@@ -108,8 +108,10 @@ class ScoreboardParser:
         sb.concours = c
         c.scoreboard = sb
 
-        warnings.simplefilter(action='ignore', category=UserWarning)
-        wb = openpyxl.load_workbook(path)
+        # Ignore data validation warning
+        with warnings.catch_warnings(action='ignore', category=UserWarning):
+            wb = openpyxl.load_workbook(path)
+
         ScoreboardParser.parse_evaluations(sb, wb)
 
     @staticmethod
