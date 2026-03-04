@@ -2,6 +2,9 @@ from pathlib import Path
 from concours import *
 import openpyxl
 
+FORMAT_TRADITIONAL = 'Traditionnel'
+FORMAT_IMPROMPTU = 'Impromptu'
+
 class ConcoursParser:
     
     @staticmethod
@@ -10,7 +13,7 @@ class ConcoursParser:
         wb = openpyxl.load_workbook(path)
 
         ConcoursParser.parse_rooms(c, wb)
-        ConcoursParser.parse_volunteers(c, wb)
+        # ConcoursParser.parse_volunteers(c, wb)
         ConcoursParser.parse_participants(c, wb)
 
         c.set_target_rs_duration()
@@ -93,3 +96,78 @@ class ConcoursParser:
                     school.contestants.add(contestant)
                     cat.contestants.add(contestant)
                     c.contestants.add(contestant)
+
+class ScoreboardParser:
+    
+    @staticmethod
+    def parse(path: Path, c: Concours):
+        """Adds the scoreboard to the concours and vice-versa rather than returning."""
+        sb = Scoreboard(path.stem)
+        sb.concours = c
+        c.scoreboard = sb
+
+        wb = openpyxl.load_workbook(path)
+
+        ScoreboardParser.parse_evaluations(sb, wb)
+
+    @staticmethod
+    def parse_evaluations(sb: Scoreboard, wb: openpyxl.Workbook):
+        sheet = wb['Evaluations']
+        rows = [r for r in sheet.rows]
+        
+        speeches = {}
+
+        # Skip first 3
+        rows = rows[3:]
+
+        for row in rows:
+            judge_name = row[0].value
+            if not judge_name:
+                break
+
+            contestant_name = row[4].value
+            
+            judge = sb.concours.get_judge(judge_name)
+            contestant = sb.concours.get_contestant(contestant_name)
+
+            format = row[1].value
+            if format == FORMAT_TRADITIONAL:
+                scores = tuple(c.value for c in row[11:16])
+                title = "" # TODO
+
+                speech = speeches.setdefault(contestant, TraditionalSpeech(contestant, title))
+
+            else:
+                scores = tuple(c.value for c in row[17:22])
+                photo = row[5].value
+                phrase = row[6].value
+
+                if photo:
+                    prompt_type = PROMPT_PHOTO
+                    prompt = photo
+                elif phrase:
+                    prompt_type = PROMPT_PHRASE
+                    prompt = phrase
+                else:
+                    prompt_type = None
+                    prompt = None
+
+                speech = speeches.setdefault(contestant, ImpromptuSpeech(contestant, prompt_type, prompt))
+
+            duration_str = row[7].value
+            if duration_str:
+            # Reparse this garbage. It's supposed to be minute:second but Excel interpets it as hour:minute
+                duration_str = f'{duration_str.hour}:{duration_str.minute}'
+                speech.add_duration_from_str(duration_str)
+
+            # TODO Some judges gave no scores
+            if set(scores) == {None}:
+                scores = None
+
+            e = Evaluation(judge, speech, scores)
+
+            comments = row[8].value
+            if comments:
+                e.comments = comments
+            
+            sb.evaluations.add(e)
