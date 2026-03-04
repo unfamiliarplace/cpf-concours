@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from concours import *
 
 class EvaluationsTool:
@@ -27,30 +29,39 @@ class EvaluationsTool:
     def do_report(c: Concours):
         et = EvaluationsTool
         es = et.evaluations_with_scores(c.scoreboard)
+        er = EvaluationsReport()
 
-        # By judge
+        for judge in c.judges:
+            er.judge_to_es = set(filter(lambda e: e.judge == judge, es))
 
-        # By contestant
-        by_contestant = {}
         for contestant in c.contestants:
-            print(contestant)
-            _es = set(filter(lambda e: e.speech.contestant == contestant, es))
-            if _es:
-                by_contestant[contestant] = (et.average(_es), et.averages(_es))
-            else:
-                by_contestant[contestant] = 'No scores available'
-        
-        for con in sorted(by_contestant, key=lambda c: c.name):
-            print(con, by_contestant[con])
+            er.contestant_to_es = set(filter(lambda e: e.speech.contestant == contestant, es))
+            # by_contestant[contestant] = (et.average(_es), et.averages(_es))
+            # for con in sorted(by_contestant, key=lambda c: c.name):
+            #     print(con, by_contestant[con])
 
-        # By format
+        for format in FORMATS:
+            pass
 
-        # By grade
+class EvaluationsReport:
+    judge_to_es: dict[Judge, set[Evaluation]]
+    contestant_to_es: dict[Contestant, set[Evaluation]]
+    format_to_es: dict[str, set[Evaluation]]
+    grade_to_es: dict[str, set[Evaluation]]
+    level_to_es: dict[str, set[Evaluation]]
+    duration_to_es_by_bucket: dict[int, set[Evaluation]] # Bucket by # of minutes?
+    category_to_places: dict[Category, list[Contestant]]
+    school_to_es_given: dict[School, set[Evaluation]]
+    school_to_es_received: dict[School, set[Evaluation]]
 
-        # By French level
+    def __init__(self: EvaluationsReport):
+        self.judge_to_es = {}
+        self.contestant_to_es = {}
+        self.format_to_es = {}
+        self.grade_to_es = {}
+        self.level_to_es = {}
+        self.duration_to_es_by_bucket = {}
+        self.category_to_places = {}
+        self.school_to_es_given = {}
+        self.school_to_es_received = {}
 
-        # By duration (bucket by # of minutes?)
-
-        # Places by score per category
-
-        # Judge deviation per contestant

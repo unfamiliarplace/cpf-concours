@@ -9,6 +9,27 @@ DURATION_SEPARATOR = ":"
 PROMPT_PHOTO = 'Photo'
 PROMPT_PHRASE = 'Phrase'
 
+FORMATS = ('Traditionnel', 'Impromptu')
+GRADES = ('9/10', '11/12')
+LEVELS = ('Cadre', 'Intensif', 'Immersion', 'Francophone')
+
+FORMAT_TO_ABBREVIATION = {
+    'Traditional': 'T',
+    'Impromptu': 'I'
+}
+
+GRADE_TO_ABBREVIATION = {
+    '9/10': 'J',
+    '11/12': 'S'
+}
+
+LEVEL_TO_ABBREVIATION = {
+    'Cadre': 'C',
+    'Intensif': 'E',
+    'Immersion': 'M',
+    'Francophone': 'F'
+}
+
 class Concours:
     name: str
     periods: set[Period]
@@ -69,18 +90,18 @@ class Concours:
 
 class Category:
     format: str
-    age: str
-    french: str
+    grade: str
+    level: str
     base_duration: int
     contestants: set[Contestant]
 
-    def __init__(self: Category, format: str, age: str, french: str, base_duration: int):
-        self.format, self.age, self.french = format, age, french
+    def __init__(self: Category, format: str, grade: str, level: str, base_duration: int):
+        self.format, self.grade, self.level = format, grade, level
         self.base_duration = base_duration
         self.contestants = set()
 
     def name(self: Category) -> str:
-        return f' {self.format} {self.age} {self.french}'
+        return f' {self.format} {self.grade} {self.level}'
     
     def projected_duration(self: Category) -> int:
         return max(0, ((self.base_duration + TRANSITION_BW_SPEAKERS) * len(self.contestants)) - TRANSITION_BW_SPEAKERS)
@@ -99,15 +120,7 @@ class Category:
         return set(filter(lambda j: j.school not in schools, judges))
 
     def shortname(self: Category) -> str:
-        age = 'J' if self.age == '9/10' else 'S'
-        fre = {
-            'Cad.': 'C',
-            'Inten.': 'E',
-            'Imm.': 'M',
-            'Fr.': 'F'
-        }
-
-        return f'{self.format}{age}{fre[self.french]}'
+        return f'{self.format}{GRADE_TO_ABBREVIATION[self.grade]}{LEVEL_TO_ABBREVIATION[self.level]}'
 
     def __repr__(self: Category) -> str:
         # return f'Cat: {self.name()}'
