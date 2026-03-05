@@ -14,7 +14,7 @@ GRADES = ('9/10', '11/12')
 LEVELS = ('Cadre', 'Intensif', 'Immersion', 'Francophone')
 
 SFORMAT_TO_ABBREVIATION = {
-    'Traditional': 'T',
+    'Traditionnel': 'T',
     'Impromptu': 'I'
 }
 
@@ -33,7 +33,7 @@ LEVEL_TO_ABBREVIATION = {
 # Accommodating myself...?
 
 INPUT_SFORMAT_TO_FULL = {
-    'T': 'Traditional',
+    'T': 'Traditionnel',
     'I': 'Impromptu'
 }
 
@@ -204,7 +204,8 @@ class SchoolPerson(Person):
         return isinstance(other, SchoolPerson) and (self.name == other.name) and (self.school == other.school)
 
 class Judge(SchoolPerson):
-    period: Period # Because a judge can be in different places in each period
+    # TODO This period stuff is definitely not ideal. See evaluations hackishness too.
+    period: Period # Because a judge can be in different places in each period.
 
     def __init__(self: Judge, name: str, school: School, period: Period):
         super().__init__(name, school)
@@ -218,6 +219,10 @@ class Judge(SchoolPerson):
 
     def __repr__(self: Judge) -> str:
         return f'[J:{self.school.shortname:<3}] {self.name}'
+    
+    def __eq__(self: Judge, other: object) -> bool:
+        """Same even if period is different, for matching purposes..."""
+        return isinstance(other, Judge) and ((self.name, self.school) == (other.name, other.school))
 
     def __hash__(self: Judge) -> int:
         return hash(('Judge', self.name, self.period))
