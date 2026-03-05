@@ -1,4 +1,5 @@
 *DS_STORE*
+*~*
 
 src/input/*
 !src/input/readme.md

@@ -17,6 +17,7 @@ PERIOD_ANY = ''
 class ConcoursReport:
     concours: Concours
     judge_to_sp: dict[Judge, Scorepad]
+    judge_to_sp_adj: dict[Judge, Scorepad]
     contestant_to_sp: dict[Contestant, Scorepad]
     sformat_to_sp: dict[str, Scorepad]
     grade_to_sp: dict[str, Scorepad]
@@ -30,6 +31,7 @@ class ConcoursReport:
     def __init__(self: ConcoursReport, c: Concours):
         self.concours = c
         self.judge_to_sp = {}
+        self.judge_to_sp_adj = {}
         self.contestant_to_sp = {}
         self.sformat_to_sp = {}
         self.grade_to_sp = {}
@@ -45,7 +47,13 @@ class ConcoursReport:
         for judge in c.judges:
             # Hackish
             judge = Judge(judge.name, judge.school, PERIOD_ANY)
+
+            # Absolute
             self.judge_to_sp[judge] = Scorepad(judge, set(filter(lambda e: e.judge == judge, es)))
+
+            # Adjusted
+            sp_adj = Scorepad(judge, set(filter(lambda e: e.judge == judge, es)))
+            self.judge_to_sp_adj[judge] = sp_adj.adjust_to_category(self.category_to_sp.values())
 
         for cont in c.contestants:
             self.contestant_to_sp[cont] = Scorepad(cont, set(filter(lambda e: e.speech.contestant == cont, es)))
@@ -167,6 +175,16 @@ class Scorepad:
 
     def filter_impromptu(self: Scorepad) -> Scorepad:
         return self.filter_evaluations(lambda e: e.sformat == 'Impromptu')
+    
+    def adjust_to_category(self: Scorepad, cat_sps: set[Scorepad]):
+        """
+        Take this Scorepad's evaluations and adjust them by subtracting the average
+        of any other Scorepads whose item matches this one's category.
+        """
+        for e in self.evaluations:
+            new = Evaluation(e.judge, e.speech, e.scores[:])
+            
+
     
     def averages(self: Scorepad) -> list[float]:
         totals = [0, 0, 0, 0, 0]
