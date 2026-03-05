@@ -25,7 +25,9 @@ def run():
 
     ScoreboardParser.parse(PATH_HARDCODED_EVALUATIONS_FILE, c)
     report = CR(c)
-    print(report)
+
+    for cat in c.categories:
+        print(cat, list((sp.item, sp.average()) for sp in report.category_to_places[cat]))
 
 if __name__ == '__main__':
     run()

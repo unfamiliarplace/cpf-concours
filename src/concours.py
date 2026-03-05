@@ -95,6 +95,13 @@ class Concours:
         
         print(f'Could not find contestant {name}')
     
+    def get_category(self: Concours, shortname: str) -> Contestant:
+        for cat in self.categories:
+            if cat.shortname() == shortname:
+                return cat
+        
+        print(f'Could not find category {shortname}')
+    
     def projected_duration(self: Concours) -> int:
         return sum(c.projected_duration() for c in self.categories)
     
@@ -134,7 +141,7 @@ class Category:
         return set(filter(lambda j: j.school not in schools, judges))
 
     def shortname(self: Category) -> str:
-        return f'{self.sformat}{GRADE_TO_ABBREVIATION[self.grade]}{LEVEL_TO_ABBREVIATION[self.level]}'
+        return f'{SFORMAT_TO_ABBREVIATION[self.sformat]}{GRADE_TO_ABBREVIATION[self.grade]}{LEVEL_TO_ABBREVIATION[self.level]}'
 
     def __repr__(self: Category) -> str:
         # return f'Cat: {self.name()}'
