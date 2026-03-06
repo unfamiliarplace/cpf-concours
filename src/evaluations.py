@@ -3,6 +3,7 @@ from typing import Iterable
 
 import openpyxl
 from openpyxl.workbook.workbook import Workbook
+from openpyxl.styles.alignment import Alignment
 from pathlib import Path
 from concours import *
 
@@ -14,12 +15,35 @@ PATH_REPORT_TEMPLATE = PATH_TEMPLATES / 'report.xlsx'
 
 PERIOD_ANY = ''
 
-def assign_cells(ws, cols: str, row: int, values: Iterable):
+# Utilities
+
+def assign_named_cells(ws, cols: str, row: int, values: Iterable, alignment: str=''):
+    """
+    >>> assign_named_cells(ws, 'CDEF', 1, (tuple, of, 4, values))
+    """
     for (c, v) in zip(cols, values):
-            ws[f'{c}{row}'] = v
+        ws[f'{c}{row}'] = v
+
+        if alignment:
+            ws[f'{c}{row}'].alignment = Alignment(alignment)
+
+def assign_n_cells(ws, start: str, row: int, values: Iterable, alignment: str=''):
+    """
+    >>> assign_named_cells(ws, 'C', 1, (tuple, of, values))
+
+    # TODO Simple: does not handle post-Z. Do not supply too many values :)
+    """
+
+    for (i, v) in enumerate(values):
+        c = chr(ord(start) + i)
+        ws[f'{c}{row}'] = v
+
+        if alignment:
+            ws[f'{c}{row}'].alignment = Alignment(alignment)
 
 class ConcoursReport:
-    concours: Concours
+    c: Concours
+
     judge_to_sp: dict[Judge, Scorepad]
     judge_to_sp_adj: dict[Judge, Scorepad]
     contestant_to_sp: dict[Contestant, Scorepad]
@@ -35,7 +59,8 @@ class ConcoursReport:
     school_to_sp_received: dict[School, Scorepad]
 
     def __init__(self: ConcoursReport, c: Concours):
-        self.concours = c
+        self.c = c
+
         self.judge_to_sp = {}
         self.judge_to_sp_adj = {}
         self.contestant_to_sp = {}
@@ -50,19 +75,23 @@ class ConcoursReport:
         self.school_to_sp_given = {}
         self.school_to_sp_received = {}
 
-        es = set(filter(lambda e: e.scores != None, c.scoreboard.evaluations))
+        self.create_scorepads()
+    
+    def create_scorepads(self: ConcoursReport):
+
+        es = set(filter(lambda e: e.scores != None, self.c.scoreboard.evaluations))
        
         # Must be done first for adjustment
-        for cat in c.categories:
+        for cat in self.c.categories:
             self.category_to_sp[cat] = Scorepad(cat, set(filter(lambda e: e.category == cat, es)))
 
         # Must precede category places
-        for cont in c.contestants:
+        for cont in self.c.contestants:
             sp = Scorepad(cont, set(filter(lambda e: e.speech.contestant == cont, es)))
             self.contestant_to_sp[cont] = sp
             self.contestant_to_sp_adj[cont] = sp.adjust_to_category(self.category_to_sp)
 
-        for judge in c.judges:
+        for judge in self.c.judges:
             # Hackish solution to different periods
             judge = Judge(judge.name, judge.school, PERIOD_ANY)
 
@@ -71,7 +100,7 @@ class ConcoursReport:
             self.judge_to_sp_adj[judge] = sp.adjust_to_category(self.category_to_sp)
 
         # Places
-        for cat in c.categories:
+        for cat in self.c.categories:
             conts = set(filter(lambda sp: sp.item.category == cat, self.contestant_to_sp.values()))
             self.category_to_places[cat] = sorted(conts, key=lambda cont: cont.average(), reverse=True)
 
@@ -91,7 +120,7 @@ class ConcoursReport:
         for (bucket, sp) in self.duration_to_sp.items():
             self.duration_to_sp_adj[bucket] = sp.adjust_to_category(self.category_to_sp)
 
-        for school in c.schools:
+        for school in self.c.schools:
             self.school_to_sp_given[school] = Scorepad(school, set(filter(lambda e: e.judge.school == school, es)))
             self.school_to_sp_received[school] = Scorepad(school, set(filter(lambda e: e.contestant.school == school, es)))
 
@@ -101,6 +130,8 @@ class ConcoursReport:
         generics = (
             ('contestants', self.contestant_to_sp),
             ('contestants_adjust', self.contestant_to_sp_adj),
+            ('judges', self.judge_to_sp),
+            ('judges_adjust', self.judge_to_sp_adj),
             ('categories', self.category_to_sp),
             ('formats', self.sformat_to_sp),
             ('grades', self.grade_to_sp),
@@ -116,8 +147,40 @@ class ConcoursReport:
 
         self._save_places(wb)
 
-        path = PATH_OUTPUT / f'statistics_{self.concours.name}.xlsx'
+        path = PATH_OUTPUT / f'statistics_{self.c.name}.xlsx'
         wb.save(path)
+    
+    def _save_generic(self: ConcoursReport, wb: Workbook, key: str, d: dict[object, set[Scorepad]]):
+        ws = wb[key]
+        for (i, sp) in enumerate(self.sorted_sps_from_dict(d)):
+            r = i + 2
+
+            spt = sp.filter_traditional()
+            spi = sp.filter_impromptu()
+            
+            ws[f'A{r}'] = str(sp.item)
+            ws[f'B{r}'] = sp.n
+            ws[f'C{r}'] = sp.average()
+
+            ws[f'D{r}'] = spt.n
+            ws[f'E{r}'] = spt.average()
+            assign_named_cells(ws, 'FGHIJ', r, spt.averages())
+
+            ws[f'K{r}'] = spi.n
+            ws[f'L{r}'] = spi.average()
+            assign_named_cells(ws, 'MNOPQ', r, spi.averages())
+
+    def _save_places(self: ConcoursReport, wb: Workbook):
+        ws = wb['places']
+        for (i, cat) in enumerate(sorted(self.category_to_places)):
+            r_places = 2 + (2 * i)
+            r_scores = r_places + 1
+            sps = self.category_to_places[cat]
+
+            # Alternating rows: category / places on one row, scores on next
+            ws[f'A{r_places}'] = str(cat)
+            assign_n_cells(ws, 'B', r_places, (str(sp.item) for sp in sps))
+            assign_n_cells(ws, 'B', r_scores, (sp.average() for sp in sps), alignment='left')
 
     @staticmethod
     def sorted_sps_from_dict(d: dict[object, Scorepad]) -> list[Scorepad]:
@@ -126,29 +189,6 @@ class ConcoursReport:
     @staticmethod
     def sort_sps(sps: Iterable[Scorepad]) -> list[Scorepad]:
         return sorted(sps, key=lambda sp: sp.average(), reverse=True)
-    
-    def _save_generic(self: ConcoursReport, wb: Workbook, key: str, d: dict[object, set[Scorepad]]):
-        ws = wb[key]
-        for (i, sp) in enumerate(self.sorted_sps_from_dict(d)):
-            n = i + 2
-
-            spt = sp.filter_traditional()
-            spi = sp.filter_impromptu()
-            
-            ws[f'A{n}'] = str(sp.item)
-            ws[f'B{n}'] = sp.n
-            ws[f'C{n}'] = sp.average()
-
-            ws[f'D{n}'] = spt.n
-            ws[f'E{n}'] = spt.average()
-            assign_cells(ws, 'FGHIJ', n, spt.averages())
-
-            ws[f'K{n}'] = spi.n
-            ws[f'L{n}'] = spi.average()
-            assign_cells(ws, 'MNOPQ', n, spi.averages())
-
-    def _save_places(self: ConcoursReport, wb: Workbook):
-        pass
 
 class Scorepad:
     item: object

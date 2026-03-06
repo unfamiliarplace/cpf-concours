@@ -1,4 +1,5 @@
 from __future__ import annotations
+from functools import total_ordering
 
  # Minutes for duration calculation
 TRANSITION_BW_SPEAKERS = 2
@@ -109,6 +110,7 @@ class Concours:
         n_rses = sum(len(p.rooms) for p in self.periods)
         self.target_rs_duration = self.projected_duration() // n_rses
 
+@total_ordering
 class Category:
     sformat: str
     grade: str
@@ -143,12 +145,32 @@ class Category:
     def shortname(self: Category) -> str:
         return f'{SFORMAT_TO_ABBREVIATION[self.sformat]}{GRADE_TO_ABBREVIATION[self.grade]}{LEVEL_TO_ABBREVIATION[self.level]}'
 
+    def terms(self: Category) -> tuple[str]:
+        return self.sformat, self.grade, self.level
+    
+    def sort_terms(self: Category) -> tuple[int]:
+        # Traditional before Impromptu
+        # Lower grade first
+        # Cadre, Intensif, Immersion, Francophone
+
+        return (
+            SFORMATS.index(self.sformat),
+            GRADES.index(self.grade),
+            LEVELS.index(self.level),
+        )
+
     def __repr__(self: Category) -> str:
         # return f'Cat: {self.name()}'
         return f'{self.shortname()}'
     
     def __eq__(self: Category, other: object) -> bool:
         return isinstance(other, Category) and (self.name() == other.name())
+    
+    def __lt__(self: Category, other: Category) -> bool:
+        if not (isinstance(other, Category)):
+            return False
+
+        return self.sort_terms() < other.sort_terms()
 
     def __hash__(self: Category) -> int:
         return hash(('Cat', self.shortname()))
@@ -239,7 +261,8 @@ class Contestant(SchoolPerson):
 
     def __repr__(self: Contestant) -> str:
         # return f'Contestant: {self.name}'
-        return f'[C] {self.name}'
+        # return f'[C] {self.name}'
+        return self.name
 
     def __hash__(self: Contestant) -> int:
         return hash(('Contestant', self.school, self.category, self.name))
