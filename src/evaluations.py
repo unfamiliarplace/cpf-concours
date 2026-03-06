@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Iterable
 
 import openpyxl
-from openpyxl.workbook.workbook import Workbook
+from openpyxl.workbook.workbook import Workbook, _WorkbookSheet
 from pathlib import Path
 from concours import *
 
@@ -13,6 +13,10 @@ PATH_TEMPLATES = PATH_BASE / 'templates'
 PATH_REPORT_TEMPLATE = PATH_TEMPLATES / 'report.xlsx'
 
 PERIOD_ANY = ''
+
+def assign_cells(ws: _WorkbookSheet, cols: str, row: int, values: Iterable):
+    for (c, v) in zip(cols, values):
+            ws[f'{c}{row}'] = v
 
 class ConcoursReport:
     concours: Concours
@@ -128,13 +132,11 @@ class ConcoursReport:
 
                 ws[f'D{n}'] = spt.n
                 ws[f'E{n}'] = spt.average()
-                for (c, a) in zip('FGHIJ', spt.averages()):
-                    ws[f'{c}{n}'] = a
+                assign_cells(ws, 'FGHIJ', n, spt.averages())
 
                 ws[f'K{n}'] = spi.n
                 ws[f'L{n}'] = spi.average()
-                for (c, a) in zip('MNOPQ', spi.averages()):
-                    ws[f'{c}{n}'] = a
+                assign_cells(ws, 'MNOPQ', n, spi.averages())
 
     def _save_contestants(self: ConcoursReport, wb: Workbook):
         pass
