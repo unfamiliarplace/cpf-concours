@@ -54,6 +54,7 @@ class ConcoursReport:
     duration_to_sp: dict[int, Scorepad] # Bucket by # of minutes
     duration_to_sp_adjust: dict[int, Scorepad]
     category_to_sp: dict[int, Scorepad]
+    category_to_sp_var: dict[int, Scorepad]
     category_to_places: dict[Category, list[Scorepad]]
     school_to_sp_given: dict[School, Scorepad]
     school_to_sp_received: dict[School, Scorepad]
@@ -71,6 +72,7 @@ class ConcoursReport:
         self.duration_to_sp = {}
         self.duration_to_sp_adj = {}
         self.category_to_sp = {}
+        self.category_to_sp_var = {}
         self.category_to_places = {}
         self.school_to_sp_given = {}
         self.school_to_sp_received = {}
@@ -83,7 +85,7 @@ class ConcoursReport:
        
         # Must be done first for adjustment
         for cat in self.c.categories:
-            self.category_to_sp[cat] = Scorepad(cat, set(filter(lambda e: e.category == cat, es)))
+            self.category_to_sp[cat] = Scorepad(cat, set(filter(lambda e: e.category == cat, es)))            
 
         # Must precede category places
         for cont in self.c.contestants:
@@ -133,6 +135,7 @@ class ConcoursReport:
             ('judges', self.judge_to_sp),
             ('judges_adjust', self.judge_to_sp_adj),
             ('categories', self.category_to_sp),
+            ('category_variances', self.category_to_sp, 'variance'),
             ('formats', self.sformat_to_sp),
             ('grades', self.grade_to_sp),
             ('levels', self.level_to_sp),
@@ -142,17 +145,31 @@ class ConcoursReport:
             ('schools_received', self.school_to_sp_received),
         )
 
-        for (key, d) in generics:
-            self._save_generic(wb, key, d)
+        for args in generics:
+            self._save_generic(wb, *args)
 
         self._save_places(wb)
 
         path = PATH_OUTPUT / f'statistics_{self.c.name}.xlsx'
         wb.save(path)
     
-    def _save_generic(self: ConcoursReport, wb: Workbook, key: str, d: dict[object, set[Scorepad]]):
+    def _save_generic(self: ConcoursReport, wb: Workbook, key: str, d: dict[object, set[Scorepad]], mode: str='average'):
+        """
+        mode can be 'average' or 'variance'
+        """
+
+        if mode == 'average':
+            cb_total = Scorepad.average
+            cb_indiv = Scorepad.averages
+        elif mode == 'variance':
+            cb_total = Scorepad.variance
+            cb_indiv = Scorepad.variances
+        else:
+            cb_total = lambda _: ''
+            cb_indiv = lambda _: [''] * 5
+
         ws = wb[key]
-        for (i, sp) in enumerate(self.sorted_sps_from_dict(d)):
+        for (i, sp) in enumerate(self.sorted_sps_from_dict(d, cb_total)):
             r = i + 2
 
             spt = sp.filter_traditional()
@@ -160,15 +177,15 @@ class ConcoursReport:
             
             ws[f'A{r}'] = str(sp.item)
             ws[f'B{r}'] = sp.n
-            ws[f'C{r}'] = sp.average()
+            ws[f'C{r}'] = cb_total(sp)
 
             ws[f'D{r}'] = spt.n
-            ws[f'E{r}'] = spt.average()
-            assign_named_cells(ws, 'FGHIJ', r, spt.averages())
+            ws[f'E{r}'] = cb_total(spt)
+            assign_named_cells(ws, 'FGHIJ', r, cb_indiv(spt))
 
             ws[f'K{r}'] = spi.n
-            ws[f'L{r}'] = spi.average()
-            assign_named_cells(ws, 'MNOPQ', r, spi.averages())
+            ws[f'L{r}'] = cb_total(spi)
+            assign_named_cells(ws, 'MNOPQ', r, cb_indiv(spi))
 
     def _save_places(self: ConcoursReport, wb: Workbook):
         ws = wb['places']
@@ -183,12 +200,18 @@ class ConcoursReport:
             assign_n_cells(ws, 'B', r_scores, (sp.average() for sp in sps), alignment='left')
 
     @staticmethod
-    def sorted_sps_from_dict(d: dict[object, Scorepad]) -> list[Scorepad]:
-        return ConcoursReport.sort_sps(d.values())
+    def sorted_sps_from_dict(d: dict[object, Scorepad], cb: callable=None) -> list[Scorepad]:
+        if not cb:
+            cb = Scorepad.average
+
+        return ConcoursReport.sort_sps(d.values(), cb)
 
     @staticmethod
-    def sort_sps(sps: Iterable[Scorepad]) -> list[Scorepad]:
-        return sorted(sps, key=lambda sp: sp.average(), reverse=True)
+    def sort_sps(sps: Iterable[Scorepad], cb: callable=None) -> list[Scorepad]:
+        if not cb:
+            cb = Scorepad.average
+
+        return sorted(sps, key=cb, reverse=True)
 
 class Scorepad:
     item: object
@@ -231,8 +254,14 @@ class Scorepad:
         
         return Scorepad(self.item, new_es)
     
+    def average(self: Scorepad) -> float:
+        if not self.n:
+            return 0.0
+        else:
+            return round(sum(sum(e.scores) for e in self.evaluations) / self.n, 1)
+    
     def averages(self: Scorepad) -> list[float]:
-        totals = [0, 0, 0, 0, 0]
+        totals = [0.0, 0.0, 0.0, 0.0, 0.0]
         if not self.n:
             return totals
 
@@ -244,9 +273,33 @@ class Scorepad:
                 totals[i] = round(totals[i] / self.n, 1)
 
         return totals
-    
-    def average(self: Scorepad) -> float:
+        
+    def variance(self: Scorepad) -> float:
         if not self.n:
             return 0.0
         else:
-            return round(sum(sum(e.scores) for e in self.evaluations) / self.n, 1)
+            total = 0.0
+
+            mean = self.average()
+            for e in self.evaluations:
+                diff = sum(e.scores) - mean
+                total += diff ** 2
+        
+            return round(total / self.n, 1)
+        
+    def variances(self: Scorepad) -> list[float]:
+        totals = [0.0, 0.0, 0.0, 0.0, 0.0]
+        if not self.n:
+            return totals
+        
+        means = self.averages()
+
+        for e in self.evaluations:
+            for i in range(5):
+                diff = e.scores[i] - means[i]
+                totals[i] += diff ** 2
+
+        for i in range(5):
+                totals[i] = round(totals[i] / self.n, 1)
+
+        return totals
