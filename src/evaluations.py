@@ -44,6 +44,17 @@ class ConcoursReport:
 
         es = set(filter(lambda e: e.scores != None, c.scoreboard.evaluations))
 
+        # For now, order matters. Contestants > Categories > Judges > Everything else unordered
+
+        for cont in c.contestants:
+            self.contestant_to_sp[cont] = Scorepad(cont, set(filter(lambda e: e.speech.contestant == cont, es)))
+        
+        for cat in c.categories:
+            self.category_to_sp[cat] = Scorepad(cat, set(filter(lambda e: e.category == cat, es)))
+
+            conts = set(filter(lambda sp: sp.item.category == cat, self.contestant_to_sp.values()))
+            self.category_to_places[cat] = sorted(conts, key=lambda cont: cont.average(), reverse=True)
+
         for judge in c.judges:
             # Hackish
             judge = Judge(judge.name, judge.school, PERIOD_ANY)
@@ -53,10 +64,7 @@ class ConcoursReport:
 
             # Adjusted
             sp_adj = Scorepad(judge, set(filter(lambda e: e.judge == judge, es)))
-            self.judge_to_sp_adj[judge] = sp_adj.adjust_to_category(self.category_to_sp.values())
-
-        for cont in c.contestants:
-            self.contestant_to_sp[cont] = Scorepad(cont, set(filter(lambda e: e.speech.contestant == cont, es)))
+            self.judge_to_sp_adj[judge] = sp_adj.adjust_to_category(self.category_to_sp)
 
         for sformat in SFORMATS:
             self.sformat_to_sp[sformat] = Scorepad(sformat, set(filter(lambda e: e.sformat == sformat, es)))
@@ -70,12 +78,6 @@ class ConcoursReport:
         for e in es:
             bucket = round(e.speech.duration / 60)
             self.duration_to_sp_by_bucket.setdefault(bucket, Scorepad(bucket, set())).evaluations.add(e) # Hackish
-        
-        for cat in c.categories:
-            self.category_to_sp[cat] = Scorepad(cat, set(filter(lambda e: e.category == cat, es)))
-
-            conts = set(filter(lambda sp: sp.item.category == cat, self.contestant_to_sp.values()))
-            self.category_to_places[cat] = sorted(conts, key=lambda cont: cont.average(), reverse=True)
 
         for school in c.schools:
             self.school_to_sp_given[school] = Scorepad(school, set(filter(lambda e: e.judge.school == school, es)))
@@ -107,29 +109,32 @@ class ConcoursReport:
         return sorted(sps, key=lambda sp: sp.average(), reverse=True)
 
     def _save_judges(self: ConcoursReport, wb: Workbook):
-        ws = wb['judges']
-        for (i, sp) in enumerate(self.sorted_sps(self.judge_to_sp)):
-            n = i + 2
-            j = sp.item
+        for (key, sps) in zip(
+            ('judges'           , 'judges_adjust'       ),
+            (self.judge_to_sp   , self.judge_to_sp_adj  )
+        ):
 
-            spt = sp.filter_traditional()
-            spi = sp.filter_impromptu()
-            
-            ws[f'A{n}'] = j.name
-            ws[f'B{n}'] = sp.n
-            ws[f'C{n}'] = sp.average()
+            ws = wb[key]
+            for (i, sp) in enumerate(self.sorted_sps(sps)):
+                n = i + 2
+                j = sp.item
 
-            ws[f'D{n}'] = spt.n
-            ws[f'E{n}'] = spt.average()
-            t_averages = spt.averages()
-            for j in range(5):
-                ws[f'{chr(j + 70)}{n}'] = t_averages[j]
+                spt = sp.filter_traditional()
+                spi = sp.filter_impromptu()
+                
+                ws[f'A{n}'] = j.name
+                ws[f'B{n}'] = sp.n
+                ws[f'C{n}'] = sp.average()
 
-            ws[f'K{n}'] = spi.n
-            ws[f'L{n}'] = spi.average()
-            i_averages = spi.averages()
-            for j in range(5):
-                ws[f'{chr(j + 77)}{n}'] = i_averages[j]
+                ws[f'D{n}'] = spt.n
+                ws[f'E{n}'] = spt.average()
+                for (c, a) in zip('FGHIJ', spt.averages()):
+                    ws[f'{c}{n}'] = a
+
+                ws[f'K{n}'] = spi.n
+                ws[f'L{n}'] = spi.average()
+                for (c, a) in zip('MNOPQ', spi.averages()):
+                    ws[f'{c}{n}'] = a
 
     def _save_contestants(self: ConcoursReport, wb: Workbook):
         pass
@@ -176,15 +181,24 @@ class Scorepad:
     def filter_impromptu(self: Scorepad) -> Scorepad:
         return self.filter_evaluations(lambda e: e.sformat == 'Impromptu')
     
-    def adjust_to_category(self: Scorepad, cat_sps: set[Scorepad]):
+    def adjust_to_category(self: Scorepad, cat_sps: dict[Category, set[Scorepad]]) -> Scorepad:
         """
         Take this Scorepad's evaluations and adjust them by subtracting the average
         of any other Scorepads whose item matches this one's category.
         """
-        for e in self.evaluations:
-            new = Evaluation(e.judge, e.speech, e.scores[:])
-            
 
+        new_es = []
+        for e in self.evaluations:
+            cat_avgs = cat_sps[e.category].averages()
+
+            new_scores = []
+            for i in range(5):
+                new_scores.append(e.scores[i] - cat_avgs[i])
+            
+            new_e = Evaluation(e.judge, e.speech, new_scores)
+            new_es.append(new_e)
+        
+        return Scorepad(self.item, new_es)
     
     def averages(self: Scorepad) -> list[float]:
         totals = [0, 0, 0, 0, 0]
