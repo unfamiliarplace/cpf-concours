@@ -27,7 +27,8 @@ class ConcoursReport:
     sformat_to_sp: dict[str, Scorepad]
     grade_to_sp: dict[str, Scorepad]
     level_to_sp: dict[str, Scorepad]
-    duration_to_sp_by_bucket: dict[int, Scorepad] # Bucket by # of minutes
+    duration_to_sp: dict[int, Scorepad] # Bucket by # of minutes
+    duration_to_sp_adjust: dict[int, Scorepad]
     category_to_sp: dict[int, Scorepad]
     category_to_places: dict[Category, list[Scorepad]]
     school_to_sp_given: dict[School, Scorepad]
@@ -42,7 +43,8 @@ class ConcoursReport:
         self.sformat_to_sp = {}
         self.grade_to_sp = {}
         self.level_to_sp = {}
-        self.duration_to_sp_by_bucket = {}
+        self.duration_to_sp = {}
+        self.duration_to_sp_adj = {}
         self.category_to_sp = {}
         self.category_to_places = {}
         self.school_to_sp_given = {}
@@ -84,7 +86,10 @@ class ConcoursReport:
 
         for e in es:
             bucket = round(e.speech.duration / 60)
-            self.duration_to_sp_by_bucket.setdefault(bucket, Scorepad(bucket, set())).evaluations.add(e) # Hackish
+            self.duration_to_sp.setdefault(bucket, Scorepad(bucket, set())).add_evaluation(e)
+        
+        for (bucket, sp) in self.duration_to_sp.items():
+            self.duration_to_sp_adj[bucket] = sp.adjust_to_category(self.category_to_sp)
 
         for school in c.schools:
             self.school_to_sp_given[school] = Scorepad(school, set(filter(lambda e: e.judge.school == school, es)))
@@ -93,99 +98,56 @@ class ConcoursReport:
     def save(self: ConcoursReport):
         wb = openpyxl.load_workbook(PATH_REPORT_TEMPLATE)
 
-        self._save_judges(wb)
-        self._save_contestants(wb)
-        self._save_categories(wb)
-        self._save_sformats(wb)
-        self._save_grades(wb)
-        self._save_levels(wb)
-        self._save_durations(wb)
+        generics = (
+            ('contestants', self.contestant_to_sp),
+            ('contestants_adjust', self.contestant_to_sp_adj),
+            ('categories', self.category_to_sp),
+            ('formats', self.sformat_to_sp),
+            ('grades', self.grade_to_sp),
+            ('levels', self.level_to_sp),
+            ('durations', self.duration_to_sp),
+            ('durations_adjust', self.duration_to_sp_adj),
+            ('schools_given', self.school_to_sp_given),
+            ('schools_received', self.school_to_sp_received),
+        )
+
+        for (key, d) in generics:
+            self._save_generic(wb, key, d)
+
         self._save_places(wb)
-        self._save_schools_given(wb)
-        self._save_schools_received(wb)
 
         path = PATH_OUTPUT / f'statistics_{self.concours.name}.xlsx'
         wb.save(path)
 
     @staticmethod
-    def sorted_sps(d: dict[object, Scorepad]) -> list[Scorepad]:
+    def sorted_sps_from_dict(d: dict[object, Scorepad]) -> list[Scorepad]:
         return ConcoursReport.sort_sps(d.values())
 
     @staticmethod
     def sort_sps(sps: Iterable[Scorepad]) -> list[Scorepad]:
         return sorted(sps, key=lambda sp: sp.average(), reverse=True)
+    
+    def _save_generic(self: ConcoursReport, wb: Workbook, key: str, d: dict[object, set[Scorepad]]):
+        ws = wb[key]
+        for (i, sp) in enumerate(self.sorted_sps_from_dict(d)):
+            n = i + 2
 
-    def _save_judges(self: ConcoursReport, wb: Workbook):
-        for (key, sps) in zip(
-            ('judges'           , 'judges_adjust'       ),
-            (self.judge_to_sp   , self.judge_to_sp_adj  )
-        ):
+            spt = sp.filter_traditional()
+            spi = sp.filter_impromptu()
+            
+            ws[f'A{n}'] = str(sp.item)
+            ws[f'B{n}'] = sp.n
+            ws[f'C{n}'] = sp.average()
 
-            ws = wb[key]
-            for (i, sp) in enumerate(self.sorted_sps(sps)):
-                n = i + 2
-                j = sp.item
+            ws[f'D{n}'] = spt.n
+            ws[f'E{n}'] = spt.average()
+            assign_cells(ws, 'FGHIJ', n, spt.averages())
 
-                spt = sp.filter_traditional()
-                spi = sp.filter_impromptu()
-                
-                ws[f'A{n}'] = j.name
-                ws[f'B{n}'] = sp.n
-                ws[f'C{n}'] = sp.average()
-
-                ws[f'D{n}'] = spt.n
-                ws[f'E{n}'] = spt.average()
-                assign_cells(ws, 'FGHIJ', n, spt.averages())
-
-                ws[f'K{n}'] = spi.n
-                ws[f'L{n}'] = spi.average()
-                assign_cells(ws, 'MNOPQ', n, spi.averages())
-
-    def _save_contestants(self: ConcoursReport, wb: Workbook):
-        for (key, sps) in zip(
-            ('contestants'          , 'contestants_adjust'      ),
-            (self.contestant_to_sp  , self.contestant_to_sp_adj )
-        ):
-
-            ws = wb[key]
-            for (i, sp) in enumerate(self.sorted_sps(sps)):
-                n = i + 2
-                c = sp.item
-
-                spt = sp.filter_traditional()
-                spi = sp.filter_impromptu()
-                
-                ws[f'A{n}'] = c.name
-                ws[f'B{n}'] = sp.average()
-
-                ws[f'C{n}'] = spt.average()
-                assign_cells(ws, 'DEFGH', n, spt.averages())
-
-                ws[f'I{n}'] = spi.average()
-                assign_cells(ws, 'JKLMN', n, spi.averages())
-
-    def _save_categories(self: ConcoursReport, wb: Workbook):
-        pass
-
-    def _save_sformats(self: ConcoursReport, wb: Workbook):
-        pass
-
-    def _save_grades(self: ConcoursReport, wb: Workbook):
-        pass
-
-    def _save_levels(self: ConcoursReport, wb: Workbook):
-        pass
-
-    def _save_durations(self: ConcoursReport, wb: Workbook):
-        pass
+            ws[f'K{n}'] = spi.n
+            ws[f'L{n}'] = spi.average()
+            assign_cells(ws, 'MNOPQ', n, spi.averages())
 
     def _save_places(self: ConcoursReport, wb: Workbook):
-        pass
-
-    def _save_schools_given(self: ConcoursReport, wb: Workbook):
-        pass
-
-    def _save_schools_received(self: ConcoursReport, wb: Workbook):
         pass
 
 class Scorepad:
@@ -195,6 +157,10 @@ class Scorepad:
 
     def __init__(self: Scorepad, item: object, evaluations: set[Evaluation]):
         self.item, self.evaluations = item, evaluations
+        self.n = len(self.evaluations)
+
+    def add_evaluation(self: Scorepad, e: Evaluation):
+        self.evaluations.add(e)
         self.n = len(self.evaluations)
 
     def filter_evaluations(self: Scorepad, cb: callable) -> Scorepad:
@@ -240,7 +206,7 @@ class Scorepad:
         return totals
     
     def average(self: Scorepad) -> float:
-        if not self.evaluations:
+        if not self.n:
             return 0.0
         else:
             return round(sum(sum(e.scores) for e in self.evaluations) / self.n, 1)
