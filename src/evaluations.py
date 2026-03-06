@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Iterable
 
 import openpyxl
-from openpyxl.workbook.workbook import Workbook, _WorkbookSheet
+from openpyxl.workbook.workbook import Workbook
 from pathlib import Path
 from concours import *
 
@@ -14,7 +14,7 @@ PATH_REPORT_TEMPLATE = PATH_TEMPLATES / 'report.xlsx'
 
 PERIOD_ANY = ''
 
-def assign_cells(ws: _WorkbookSheet, cols: str, row: int, values: Iterable):
+def assign_cells(ws, cols: str, row: int, values: Iterable):
     for (c, v) in zip(cols, values):
             ws[f'{c}{row}'] = v
 
@@ -23,6 +23,7 @@ class ConcoursReport:
     judge_to_sp: dict[Judge, Scorepad]
     judge_to_sp_adj: dict[Judge, Scorepad]
     contestant_to_sp: dict[Contestant, Scorepad]
+    contestant_to_sp_adj: dict[Contestant, Scorepad]
     sformat_to_sp: dict[str, Scorepad]
     grade_to_sp: dict[str, Scorepad]
     level_to_sp: dict[str, Scorepad]
@@ -37,6 +38,7 @@ class ConcoursReport:
         self.judge_to_sp = {}
         self.judge_to_sp_adj = {}
         self.contestant_to_sp = {}
+        self.contestant_to_sp_adj = {}
         self.sformat_to_sp = {}
         self.grade_to_sp = {}
         self.level_to_sp = {}
@@ -47,28 +49,29 @@ class ConcoursReport:
         self.school_to_sp_received = {}
 
         es = set(filter(lambda e: e.scores != None, c.scoreboard.evaluations))
-
-        # For now, order matters. Contestants > Categories > Judges > Everything else unordered
-
-        for cont in c.contestants:
-            self.contestant_to_sp[cont] = Scorepad(cont, set(filter(lambda e: e.speech.contestant == cont, es)))
-        
+       
+        # Must be done first for adjustment
         for cat in c.categories:
             self.category_to_sp[cat] = Scorepad(cat, set(filter(lambda e: e.category == cat, es)))
 
-            conts = set(filter(lambda sp: sp.item.category == cat, self.contestant_to_sp.values()))
-            self.category_to_places[cat] = sorted(conts, key=lambda cont: cont.average(), reverse=True)
+        # Must precede category places
+        for cont in c.contestants:
+            sp = Scorepad(cont, set(filter(lambda e: e.speech.contestant == cont, es)))
+            self.contestant_to_sp[cont] = sp
+            self.contestant_to_sp_adj[cont] = sp.adjust_to_category(self.category_to_sp)
 
         for judge in c.judges:
-            # Hackish
+            # Hackish solution to different periods
             judge = Judge(judge.name, judge.school, PERIOD_ANY)
 
-            # Absolute
-            self.judge_to_sp[judge] = Scorepad(judge, set(filter(lambda e: e.judge == judge, es)))
+            sp = Scorepad(judge, set(filter(lambda e: e.judge == judge, es)))
+            self.judge_to_sp[judge] = sp
+            self.judge_to_sp_adj[judge] = sp.adjust_to_category(self.category_to_sp)
 
-            # Adjusted
-            sp_adj = Scorepad(judge, set(filter(lambda e: e.judge == judge, es)))
-            self.judge_to_sp_adj[judge] = sp_adj.adjust_to_category(self.category_to_sp)
+        # Places
+        for cat in c.categories:
+            conts = set(filter(lambda sp: sp.item.category == cat, self.contestant_to_sp.values()))
+            self.category_to_places[cat] = sorted(conts, key=lambda cont: cont.average(), reverse=True)
 
         for sformat in SFORMATS:
             self.sformat_to_sp[sformat] = Scorepad(sformat, set(filter(lambda e: e.sformat == sformat, es)))
@@ -139,7 +142,27 @@ class ConcoursReport:
                 assign_cells(ws, 'MNOPQ', n, spi.averages())
 
     def _save_contestants(self: ConcoursReport, wb: Workbook):
-        pass
+        for (key, sps) in zip(
+            ('contestants'          , 'contestants_adjust'      ),
+            (self.contestant_to_sp  , self.contestant_to_sp_adj )
+        ):
+
+            ws = wb[key]
+            for (i, sp) in enumerate(self.sorted_sps(sps)):
+                n = i + 2
+                c = sp.item
+
+                spt = sp.filter_traditional()
+                spi = sp.filter_impromptu()
+                
+                ws[f'A{n}'] = c.name
+                ws[f'B{n}'] = sp.average()
+
+                ws[f'C{n}'] = spt.average()
+                assign_cells(ws, 'DEFGH', n, spt.averages())
+
+                ws[f'I{n}'] = spi.average()
+                assign_cells(ws, 'JKLMN', n, spi.averages())
 
     def _save_categories(self: ConcoursReport, wb: Workbook):
         pass
