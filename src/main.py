@@ -2,6 +2,7 @@ from pathlib import Path
 from parser import ConcoursParser, ScoreboardParser
 from schedule import ConcoursScheduler as CS
 from evaluations import ConcoursReport as CR
+from evaluations import SCORE_LABELS
 
 PATH_BASE = Path('./src')
 PATH_INPUT = PATH_BASE / 'input'
@@ -27,6 +28,9 @@ def run():
     ScoreboardParser.parse(PATH_HARDCODED_EVALUATIONS_FILE, c)
     report = CR(c)
     report.save()
+
+    # TD
+    report.school_report('TDChristian')    
 
 if __name__ == '__main__':
     run()

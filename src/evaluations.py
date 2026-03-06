@@ -15,6 +15,24 @@ PATH_REPORT_TEMPLATE = PATH_TEMPLATES / 'report.xlsx'
 
 PERIOD_ANY = ''
 
+SCORE_LABELS = {
+    'Traditionnel': (
+        'Expression orale',
+        'Cohérence de la présentation',
+        'Langage',
+        'Mis en scène',
+        'Questions'
+    ),
+
+    'Impromptu': (
+        'Cohérence',
+        'Vocabulaire',
+        'Aisance',
+        'Qualité de la langue parlée',
+        'Questions'
+    )
+}
+
 # Utilities
 
 def assign_named_cells(ws, cols: str, row: int, values: Iterable, alignment: str=''):
@@ -212,6 +230,28 @@ class ConcoursReport:
             cb = Scorepad.average
 
         return sorted(sps, key=cb, reverse=True)
+    
+    def school_report(self: ConcoursReport, school_name: str):
+        """Print a report of students for this school."""
+
+        for con in self.contestant_to_sp:
+            if con.school.name != school_name:
+                continue
+
+            labels = SCORE_LABELS[con.category.sformat]
+
+            sp_absolute = self.contestant_to_sp[con]
+            sp_relative = self.contestant_to_sp_adj[con]
+            score_a, scores_a = sp_absolute.average(), sp_absolute.averages()
+            score_r, scores_r = sp_relative.average(), sp_relative.averages()
+
+            print(con.name)
+            print('Total:', score_a, f'({score_r})')
+
+            for i in range(5):            
+                print(f'{labels[i]}:', scores_a[i], f'({scores_r[i]})')
+
+            print()
 
 class Scorepad:
     item: object
